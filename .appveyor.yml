@@ -10,6 +10,9 @@ platform:
 matrix:
   allow_failures:
     - julia_version: nightly
+    # Following is failing due to weird MBedTLS download error (?) :-/
+    - julia_version: 1.3
+      platform: x86
 branches:
   only:
     - master
