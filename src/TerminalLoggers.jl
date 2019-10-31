@@ -7,9 +7,9 @@ using Logging:
 import Logging:
     handle_message, shouldlog, min_enabled_level, catch_exceptions
 
-export ConsoleLogger
+export TerminalLogger
 
 include("StickyMessages.jl")
-include("ConsoleLogger.jl")
+include("TerminalLogger.jl")
 
 end # module

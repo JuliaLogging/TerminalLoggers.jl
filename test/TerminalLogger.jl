@@ -4,13 +4,13 @@ import TerminalLoggers.default_metafmt
 
 @noinline func1() = backtrace()
 
-@testset "ConsoleLogger" begin
+@testset "TerminalLogger" begin
     # First pass log limiting
-    @test min_enabled_level(ConsoleLogger(devnull, Debug)) == Debug
-    @test min_enabled_level(ConsoleLogger(devnull, Error)) == Error
+    @test min_enabled_level(TerminalLogger(devnull, Debug)) == Debug
+    @test min_enabled_level(TerminalLogger(devnull, Error)) == Error
 
     # Second pass log limiting
-    logger = ConsoleLogger(devnull)
+    logger = TerminalLogger(devnull)
     @test shouldlog(logger, Info, Base, :group, :asdf) === true
     handle_message(logger, Info, "msg", Base, :group, :asdf, "somefile", 1, maxlog=2)
     @test shouldlog(logger, Info, Base, :group, :asdf) === true
@@ -48,10 +48,10 @@ import TerminalLoggers.default_metafmt
                     right_justify=0, kws...)
         buf = IOBuffer()
         io = IOContext(buf, :displaysize=>(30,width), :color=>color)
-        logger = ConsoleLogger(io, Debug,
-                               meta_formatter=meta_formatter,
-                               show_limited=show_limited,
-                               right_justify=right_justify)
+        logger = TerminalLogger(io, Debug,
+                                meta_formatter=meta_formatter,
+                                show_limited=show_limited,
+                                right_justify=right_justify)
         prev_have_color = Base.have_color
         handle_message(logger, level, message, _module, :a_group, :an_id,
                        file, line; kws...)

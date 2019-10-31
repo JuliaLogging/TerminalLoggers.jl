@@ -1,8 +1,8 @@
 # This file is a part of Julia. License is MIT: https://julialang.org/license
 
 """
-    ConsoleLogger(stream=stderr, min_level=Info; meta_formatter=default_metafmt,
-                  show_limited=true, right_justify=0)
+    TerminalLogger(stream=stderr, min_level=Info; meta_formatter=default_metafmt,
+                   show_limited=true, right_justify=0)
 
 Logger with formatting optimized for readability in a text console, for example
 interactive work with the Julia REPL.
@@ -22,7 +22,7 @@ Message formatting can be controlled by setting keyword arguments:
 * `right_justify` is the integer column which log metadata is right justified
   at. The default is zero (metadata goes on its own line).
 """
-struct ConsoleLogger <: AbstractLogger
+struct TerminalLogger <: AbstractLogger
     stream::IO
     min_level::LogLevel
     meta_formatter
@@ -31,17 +31,17 @@ struct ConsoleLogger <: AbstractLogger
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
 end
-function ConsoleLogger(stream::IO=stderr, min_level=Info;
-                       meta_formatter=default_metafmt, show_limited=true,
-                       right_justify=0)
-    ConsoleLogger(stream, min_level, meta_formatter,
-                  show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream))
+function TerminalLogger(stream::IO=stderr, min_level=Info;
+                        meta_formatter=default_metafmt, show_limited=true,
+                        right_justify=0)
+    TerminalLogger(stream, min_level, meta_formatter,
+                   show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream))
 end
 
-shouldlog(logger::ConsoleLogger, level, _module, group, id) =
+shouldlog(logger::TerminalLogger, level, _module, group, id) =
     get(logger.message_limits, id, 1) > 0
 
-min_enabled_level(logger::ConsoleLogger) = logger.min_level
+min_enabled_level(logger::TerminalLogger) = logger.min_level
 
 # Formatting of values in key value pairs
 showvalue(io, msg) = show(io, "text/plain", msg)
@@ -96,7 +96,7 @@ function termlength(str)
     return N
 end
 
-function handle_message(logger::ConsoleLogger, level, message, _module, group, id,
+function handle_message(logger::TerminalLogger, level, message, _module, group, id,
                         filepath, line; maxlog=nothing, progress=nothing,
                         sticky=nothing, kwargs...)
     if maxlog !== nothing && maxlog isa Integer

@@ -5,5 +5,5 @@ using Logging:
     LogLevel, BelowMinLevel, Debug, Info, Warn, Error, AboveMaxLevel,
     shouldlog, handle_message, min_enabled_level, catch_exceptions
 
-include("ConsoleLogger.jl")
+include("TerminalLogger.jl")
 include("StickyMessages.jl")
