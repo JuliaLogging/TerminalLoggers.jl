@@ -1,5 +1,3 @@
-# This file is a part of Julia. License is MIT: https://julialang.org/license
-
 """
     TerminalLogger(stream=stderr, min_level=Info; meta_formatter=default_metafmt,
                    show_limited=true, right_justify=0)
