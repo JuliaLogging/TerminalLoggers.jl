@@ -3,6 +3,9 @@ uuid = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 authors = ["Chris Foster <chris42f@gmail.com>"]
 version = "0.1.0"
 
+[deps]
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
 [compat]
 julia = "1"
 
