@@ -5,3 +5,6 @@
 [![Build Status](https://travis-ci.com/c42f/TerminalLoggers.jl.svg?branch=master)](https://travis-ci.com/c42f/TerminalLoggers.jl)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/c42f/TerminalLoggers.jl?svg=true)](https://ci.appveyor.com/project/c42f/TerminalLoggers-jl)
 [![Codecov](https://codecov.io/gh/c42f/TerminalLoggers.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/c42f/TerminalLoggers.jl)
+
+`TerminalLoggers` contains user interface utilities for displaying log messages
+in text terminals.
