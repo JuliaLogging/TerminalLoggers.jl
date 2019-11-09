@@ -7,6 +7,9 @@ using Logging:
 import Logging:
     handle_message, shouldlog, min_enabled_level, catch_exceptions
 
+using PrettyTables:
+    Highlighter, PrettyTableFormat, pretty_table
+
 export TerminalLogger
 
 const ProgressLevel = LogLevel(-1)
@@ -16,6 +19,7 @@ using .ProgressMeter:
     ProgressBar, printprogress
 
 include("StickyMessages.jl")
+include("TableMonitor.jl")
 include("TerminalLogger.jl")
 
 end # module
