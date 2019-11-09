@@ -1,5 +1,5 @@
 """
-    TerminalLogger(stream=stderr, min_level=Info; meta_formatter=default_metafmt,
+    TerminalLogger(stream=stderr, min_level=$ProgressLevel; meta_formatter=default_metafmt,
                    show_limited=true, right_justify=0)
 
 Logger with formatting optimized for readability in a text console, for example
@@ -28,12 +28,13 @@ struct TerminalLogger <: AbstractLogger
     right_justify::Int
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
+    bars::Dict{Any,Progress}
 end
-function TerminalLogger(stream::IO=stderr, min_level=Info;
+function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
                         right_justify=0)
     TerminalLogger(stream, min_level, meta_formatter,
-                   show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream))
+                   show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream), Dict{Any,Progress}())
 end
 
 shouldlog(logger::TerminalLogger, level, _module, group, id) =
@@ -94,6 +95,71 @@ function termlength(str)
     return N
 end
 
+# Since `ProgressMeter.Progress` requires an integer to update its state,
+# we convert `progress` to `fakecount` by `_progress_count * progress`.
+const _progress_count = 1000
+
+function handle_progress(logger, message, id, progress)
+    # Don't do anything when it's already done:
+    if (progress == "done" || progress >= 1) && !haskey(logger.bars, id)
+        return
+    end
+
+    try
+        bar = get!(logger.bars, id) do
+            Progress(
+                _progress_count;
+                dt = -1.0,  # bypass time-based throttling
+                output = IOContext(
+                    IOBuffer(),
+                    :displaysize => displaysize(logger.stream),
+                    :color => get(logger.stream, :color, false),
+                ),
+            )
+        end
+        if message != ""
+            message = string(message)
+            if !endswith(message, " ")
+                message *= " "
+            end
+            bar.desc = message
+        end
+
+        # Do what `ProgressMeter.tty_width` does:
+        #...length of percentage and ETA string with days is 29 characters
+        bar.barlen = max(0, displaysize(logger.stream)[2] - (length(bar.desc) + 29))
+
+        fakecount = if progress == "done" || progress >= 1
+            _progress_count
+        elseif progress >= 0
+            floor(Int, _progress_count * progress)
+        else
+            0
+        end
+        update!(bar, fakecount)
+
+        # Using `stripg` to get rid of `\r` etc.:
+        msg = lstrip(String(take!(bar.output.io)), '\r')
+        # Strip off control characters:
+        i = findlast("\e", msg)
+        if i !== nothing
+            msg = msg[1:first(i)-1]
+        end
+
+        if progress == "done" || progress >= 1
+            pop!(logger.sticky_messages, id)
+            println(logger.stream, msg)
+        else
+            push!(logger.sticky_messages, id => msg)
+        end
+    finally
+        if progress == "done" || progress >= 1
+            pop!(logger.sticky_messages, id)  # redundant (but safe) if no error
+            pop!(logger.bars, id, nothing)
+        end
+    end
+end
+
 function handle_message(logger::TerminalLogger, level, message, _module, group, id,
                         filepath, line; maxlog=nothing, progress=nothing,
                         sticky=nothing, kwargs...)
@@ -101,6 +167,11 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         remaining = get!(logger.message_limits, id, maxlog)
         logger.message_limits[id] = remaining - 1
         remaining > 0 || return
+    end
+
+    if progress == "done" || progress isa Real
+        handle_progress(logger, message, id, progress)
+        return
     end
 
 	substr(s) = SubString(s, 1, length(s)) # julia 0.6 compat
@@ -129,14 +200,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         end
     end
 
-    if progress !== nothing
-        if (progress isa Symbol && progress == :done) || progress == 1
-            sticky = :done
-        else
-            sticky = true
-        end
-    end
-
     # Format lines as text with appropriate indentation and with a box
     # decoration on the left.
     color,prefix,suffix = logger.meta_formatter(level, _module, group, id, filepath, line)
@@ -162,12 +225,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
             printstyled(iob, prefix, " ", bold=true, color=color)
         end
         print(iob, " "^indent, msg)
-        if i == 1 && progress !== nothing
-            progress = clamp(convert(Float64, progress), 0.0, 1.0)
-            barfulllen = dsize[2] - length(boxstr) - length(prefix) - indent - length(msg) - 2
-            barlen = round(Int, barfulllen*progress)
-            print(iob, ' ', '='^barlen, ' '^(barfulllen-barlen))
-        end
         if i == length(msglines) && !isempty(suffix)
             npad = max(0, justify_width - nonpadwidth) + minsuffixpad
             print(iob, " "^npad)

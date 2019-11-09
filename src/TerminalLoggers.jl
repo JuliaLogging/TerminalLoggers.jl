@@ -7,7 +7,12 @@ using Logging:
 import Logging:
     handle_message, shouldlog, min_enabled_level, catch_exceptions
 
+using ProgressMeter:
+    Progress, update!
+
 export TerminalLogger
+
+const ProgressLevel = LogLevel(-1)
 
 include("StickyMessages.jl")
 include("TerminalLogger.jl")
