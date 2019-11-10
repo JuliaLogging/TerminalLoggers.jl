@@ -226,6 +226,9 @@ import TerminalLoggers.default_metafmt
     \e[36m\e[1m└ \e[22m\e[39m\e[90mSUFFIX\e[39m
     """
 
-   @test genmsg("", progress=0.1, width=60) ==
-   "Progress:  10%|██▏                  |  ETA: 0:00:00"
+    @test match(
+        r"Progress:  10%\|██▏                  \|  ETA: 0:00:[0-9][0-9]",
+        genmsg("", progress=0.1, width=60),
+    ) !== nothing
+
 end
