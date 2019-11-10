@@ -230,5 +230,5 @@ import TerminalLoggers.default_metafmt
     ⊏(s, re) = match(re, s) !== nothing
 
     @test genmsg("", progress=0.1, width=60) ⊏
-    r"Progress:  10%\|██▏                  \|  ETA: 0:00:[0-9][0-9]"
+    r"Progress:  10%\|██.                  \|  ETA: 0:00:[0-9][0-9]"
 end
