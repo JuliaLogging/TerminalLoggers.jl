@@ -71,7 +71,7 @@ function showsticky(io, prev_nlines, messages)
         for i = 1:length(messages)-1
             write(iob, messages[i][2])
         end
-        write(iob, messages[end][2][1:end-1])
+        write(iob, chop(messages[end][2]))
     end
     # TODO: Ideally we'd query the terminal for the line it was on before doing
     # all this and restore it if it's not in the new non-scrollable region.

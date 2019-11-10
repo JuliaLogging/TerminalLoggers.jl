@@ -35,4 +35,8 @@ end
                                 "\e[20;1H\e[J\e[1;20r\e[19;1H"
     pop!(stickies, :b)
     @test String(take!(buf)) == ""
+
+    push!(stickies, :a=>"αβγ\n")
+    @test String(take!(buf)) ==  #scroll    #csr    #pos   #msg #pos
+                                "\e[20;1H\n\e[1;19r\e[20;1Hαβγ\e[19;1H"
 end
