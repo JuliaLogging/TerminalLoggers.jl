@@ -26,7 +26,19 @@ function StickyMessages(io::IO; ansi_codes=io isa Base.TTY &&
                                     !Sys.iswindows())
     sticky = StickyMessages(io, ansi_codes, Vector{Pair{Any,String}}())
     # Ensure we clean up the terminal
-    finalizer(empty!, sticky)
+    finalizer(sticky) do sticky
+        # See also empty!()
+        if !sticky.ansi_codes
+            return
+        end
+        prev_nlines = _countlines(sticky.messages)
+        if prev_nlines > 0
+            # Clean up sticky lines. Hack: must be async to do the IO outside
+            # of finalizer. Proper fix would be an uninstall event triggered by
+            # with_logger.
+            @async showsticky(sticky.io, prev_nlines, [])
+        end
+    end
     sticky
 end
 

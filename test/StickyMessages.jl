@@ -39,4 +39,35 @@ end
     push!(stickies, :a=>"αβγ\n")
     @test String(take!(buf)) ==  #scroll    #csr    #pos   #msg #pos
                                 "\e[20;1H\n\e[1;19r\e[20;1Hαβγ\e[19;1H"
+
+    push!(stickies, :b=>"msg\n")
+    take!(buf)
+
+    # Remove all two messages
+    empty!(stickies)
+    @test String(take!(buf)) == #clear       #csr    #pos
+                                "\e[19;1H\e[J\e[1;20r\e[18;1H"
+end
+
+@noinline func_barrier(f) = f()
+
+@testset "Sticky messages with ANSI codes" begin
+    buf = IOBuffer()
+    dsize = (20, 80) # Intentionally different from default of 25 rows
+    func_barrier() do
+        # Hide stickies variable behind a function barrier to make sure(er)
+        # that it can be GC'd.
+        stickies = StickyMessages(IOContext(buf, :displaysize=>dsize), ansi_codes=true)
+        push!(stickies, :a=>"a-msg\n")
+        push!(stickies, :b=>"b-msg\n")
+        take!(buf)
+        nothing
+    end
+    # Hack to force StickyMessages finalizer
+    GC.gc(true) # trigger finalizer
+    for i=1:1000
+        yield() # allow async cleanup
+    end
+    @test String(take!(buf)) == #clear       #csr    #pos
+                                "\e[19;1H\e[J\e[1;20r\e[18;1H"
 end
