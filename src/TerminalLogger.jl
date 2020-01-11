@@ -28,13 +28,21 @@ struct TerminalLogger <: AbstractLogger
     right_justify::Int
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
-    bars::Dict{Any,Progress}
+    bars::Dict{Any,ProgressBar}
 end
 function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
                         right_justify=0)
-    TerminalLogger(stream, min_level, meta_formatter,
-                   show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream), Dict{Any,Progress}())
+    TerminalLogger(
+        stream,
+        min_level,
+        meta_formatter,
+        show_limited,
+        right_justify,
+        Dict{Any,Int}(),
+        StickyMessages(stream),
+        Dict{Any,ProgressBar}(),
+    )
 end
 
 shouldlog(logger::TerminalLogger, level, _module, group, id) =
@@ -95,10 +103,6 @@ function termlength(str)
     return N
 end
 
-# Since `ProgressMeter.Progress` requires an integer to update its state,
-# we convert `progress` to `fakecount` by `_progress_count * progress`.
-const _progress_count = 1000
-
 function handle_progress(logger, message, id, progress)
     # Don't do anything when it's already done:
     if (progress == "done" || progress >= 1) && !haskey(logger.bars, id)
@@ -106,51 +110,30 @@ function handle_progress(logger, message, id, progress)
     end
 
     try
-        bar = get!(logger.bars, id) do
-            Progress(
-                _progress_count;
-                dt = -1.0,  # bypass time-based throttling
-                output = IOContext(
-                    IOBuffer(),
-                    :displaysize => displaysize(logger.stream),
-                    :color => get(logger.stream, :color, false),
-                ),
-            )
-        end
-        if message != ""
+        bar = get!(ProgressBar, logger.bars, id)
+
+        if message == ""
+            message = "Progress: "
+        else
             message = string(message)
             if !endswith(message, " ")
                 message *= " "
             end
-            bar.desc = message
         end
 
-        # Do what `ProgressMeter.tty_width` does:
-        #...length of percentage and ETA string with days is 29 characters
-        bar.barlen = max(0, displaysize(logger.stream)[2] - (length(bar.desc) + 29))
-
-        fakecount = if progress == "done" || progress >= 1
-            _progress_count
-        elseif progress >= 0
-            floor(Int, _progress_count * progress)
-        else
-            0
-        end
-        update!(bar, fakecount)
-
-        # Using `stripg` to get rid of `\r` etc.:
-        msg = lstrip(String(take!(bar.output.io)), '\r')
-        # Strip off control characters:
-        i = findlast("\e", msg)
-        if i !== nothing
-            msg = msg[1:first(i)-1]
-        end
+        bartxt = sprint(
+            printprogress,
+            bar,
+            message,
+            progress;
+            context = :displaysize => displaysize(logger.stream),
+        )
 
         if progress == "done" || progress >= 1
             pop!(logger.sticky_messages, id)
-            println(logger.stream, msg)
+            println(logger.stream, bartxt)
         else
-            push!(logger.sticky_messages, id => msg)
+            push!(logger.sticky_messages, id => bartxt)
         end
     finally
         if progress == "done" || progress >= 1
