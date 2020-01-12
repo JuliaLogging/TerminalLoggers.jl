@@ -125,7 +125,7 @@ function handle_progress(logger, message, id, progress)
             printprogress,
             bar,
             message,
-            progress;
+            progress == "done" ? 1.0 : progress;
             context = :displaysize => displaysize(logger.stream),
         )
 
