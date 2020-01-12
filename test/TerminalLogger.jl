@@ -196,7 +196,7 @@ import TerminalLoggers.default_metafmt
         """,
         # EOL hack to work around git whitespace errors
         # VERSION dependence due to JuliaLang/julia#33339
-        (VERSION <= v"1.3" ? "EOL" : "       EOL")=>""
+        (VERSION < v"1.4-" ? "EOL" : "       EOL")=>""
         )
         # Limiting the amount which is printed
         @test genmsg("msg", a=fill(1.00001, 10,10), show_limited=false) ==
