@@ -251,8 +251,8 @@ import TerminalLoggers.default_metafmt
 
     @test genmsg("", progress=0.1, width=60) ⊏
     r"Progress:  10%\|██.                  \|  ETA: 0:00:[0-9][0-9]"
-    @test genmsg("", progress=NaN, width=60) ==
-    "Progress:   0%|                     |  ETA: N/A"
+    @test genmsg("", progress=NaN, width=60) ⊏
+    r"Progress:   0%|.                    |  ETA: N/A"
     @test genmsg("", progress=1.0, width=60) == ""
     @test genmsg("", progress="done", width=60) == ""
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = 1.0,))], width = 60)[end] ⊏
