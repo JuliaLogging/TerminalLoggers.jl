@@ -1,5 +1,5 @@
 """
-    TerminalLogger(stream=stderr, min_level=Info; meta_formatter=default_metafmt,
+    TerminalLogger(stream=stderr, min_level=$ProgressLevel; meta_formatter=default_metafmt,
                    show_limited=true, right_justify=0)
 
 Logger with formatting optimized for readability in a text console, for example
@@ -28,12 +28,21 @@ struct TerminalLogger <: AbstractLogger
     right_justify::Int
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
+    bars::Dict{Any,ProgressBar}
 end
-function TerminalLogger(stream::IO=stderr, min_level=Info;
+function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
                         right_justify=0)
-    TerminalLogger(stream, min_level, meta_formatter,
-                   show_limited, right_justify, Dict{Any,Int}(), StickyMessages(stream))
+    TerminalLogger(
+        stream,
+        min_level,
+        meta_formatter,
+        show_limited,
+        right_justify,
+        Dict{Any,Int}(),
+        StickyMessages(stream),
+        Dict{Any,ProgressBar}(),
+    )
 end
 
 shouldlog(logger::TerminalLogger, level, _module, group, id) =
@@ -94,6 +103,46 @@ function termlength(str)
     return N
 end
 
+function handle_progress(logger, message, id, progress)
+    # Don't do anything when it's already done:
+    if (progress == "done" || progress >= 1) && !haskey(logger.bars, id)
+        return
+    end
+
+    try
+        bar = get!(ProgressBar, logger.bars, id)
+
+        if message == ""
+            message = "Progress: "
+        else
+            message = string(message)
+            if !endswith(message, " ")
+                message *= " "
+            end
+        end
+
+        bartxt = sprint(
+            printprogress,
+            bar,
+            message,
+            progress == "done" ? 1.0 : progress;
+            context = :displaysize => displaysize(logger.stream),
+        )
+
+        if progress == "done" || progress >= 1
+            pop!(logger.sticky_messages, id)
+            println(logger.stream, bartxt)
+        else
+            push!(logger.sticky_messages, id => bartxt)
+        end
+    finally
+        if progress == "done" || progress >= 1
+            pop!(logger.sticky_messages, id)  # redundant (but safe) if no error
+            pop!(logger.bars, id, nothing)
+        end
+    end
+end
+
 function handle_message(logger::TerminalLogger, level, message, _module, group, id,
                         filepath, line; maxlog=nothing, progress=nothing,
                         sticky=nothing, kwargs...)
@@ -101,6 +150,11 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         remaining = get!(logger.message_limits, id, maxlog)
         logger.message_limits[id] = remaining - 1
         remaining > 0 || return
+    end
+
+    if progress == "done" || progress isa Real
+        handle_progress(logger, message, id, progress)
+        return
     end
 
 	substr(s) = SubString(s, 1, length(s)) # julia 0.6 compat
@@ -129,14 +183,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         end
     end
 
-    if progress !== nothing
-        if (progress isa Symbol && progress == :done) || progress == 1
-            sticky = :done
-        else
-            sticky = true
-        end
-    end
-
     # Format lines as text with appropriate indentation and with a box
     # decoration on the left.
     color,prefix,suffix = logger.meta_formatter(level, _module, group, id, filepath, line)
@@ -162,12 +208,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
             printstyled(iob, prefix, " ", bold=true, color=color)
         end
         print(iob, " "^indent, msg)
-        if i == 1 && progress !== nothing
-            progress = clamp(convert(Float64, progress), 0.0, 1.0)
-            barfulllen = dsize[2] - length(boxstr) - length(prefix) - indent - length(msg) - 2
-            barlen = round(Int, barfulllen*progress)
-            print(iob, ' ', '='^barlen, ' '^(barfulllen-barlen))
-        end
         if i == length(msglines) && !isempty(suffix)
             npad = max(0, justify_width - nonpadwidth) + minsuffixpad
             print(iob, " "^npad)

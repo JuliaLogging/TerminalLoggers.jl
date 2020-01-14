@@ -9,6 +9,12 @@ import Logging:
 
 export TerminalLogger
 
+const ProgressLevel = LogLevel(-1)
+
+include("ProgressMeter/ProgressMeter.jl")
+using .ProgressMeter:
+    ProgressBar, printprogress
+
 include("StickyMessages.jl")
 include("TerminalLogger.jl")
 

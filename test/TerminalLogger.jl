@@ -42,10 +42,10 @@ import TerminalLoggers.default_metafmt
     end
 
     # Log formatting
-    function genmsg(message; level=Info, _module=Main,
-                    file="some/path.jl", line=101, color=false, width=75,
-                    meta_formatter=dummy_metafmt, show_limited=true,
-                    right_justify=0, kws...)
+    function genmsgs(events; level=Info, _module=Main,
+                     file="some/path.jl", line=101, color=false, width=75,
+                     meta_formatter=dummy_metafmt, show_limited=true,
+                     right_justify=0)
         buf = IOBuffer()
         io = IOContext(buf, :displaysize=>(30,width), :color=>color)
         logger = TerminalLogger(io, Debug,
@@ -53,9 +53,29 @@ import TerminalLoggers.default_metafmt
                                 show_limited=show_limited,
                                 right_justify=right_justify)
         prev_have_color = Base.have_color
-        handle_message(logger, level, message, _module, :a_group, :an_id,
-                       file, line; kws...)
-        String(take!(buf))
+        return map(events) do (message, kws)
+            handle_message(logger, level, message, _module, :a_group, :an_id,
+                           file, line; kws...)
+            String(take!(buf))
+        end
+    end
+    function genmsg(message; kwargs...)
+        kws = Dict(kwargs)
+        logconfig = Dict(
+            k => pop!(kws, k)
+            for k in [
+                :level,
+                :_module,
+                :file,
+                :line,
+                :color,
+                :width,
+                :meta_formatter,
+                :show_limited,
+                :right_justify,
+            ] if haskey(kws, k)
+        )
+        return genmsgs([(message, kws)]; logconfig...)[1]
     end
 
     # Basic tests for the default setup
@@ -196,7 +216,7 @@ import TerminalLoggers.default_metafmt
         """,
         # EOL hack to work around git whitespace errors
         # VERSION dependence due to JuliaLang/julia#33339
-        (VERSION <= v"1.3" ? "EOL" : "       EOL")=>""
+        (VERSION < v"1.4-" ? "EOL" : "       EOL")=>""
         )
         # Limiting the amount which is printed
         @test genmsg("msg", a=fill(1.00001, 10,10), show_limited=false) ==
@@ -225,4 +245,18 @@ import TerminalLoggers.default_metafmt
     \e[36m\e[1m│ \e[22m\e[39mline2
     \e[36m\e[1m└ \e[22m\e[39m\e[90mSUFFIX\e[39m
     """
+
+    # Using infix operator so that `@test` prints lhs and rhs when failed:
+    ⊏(s, re) = match(re, s) !== nothing
+
+    @test genmsg("", progress=0.1, width=60) ⊏
+    r"Progress:  10%\|██.                  \|  ETA: 0:00:[0-9][0-9]"
+    @test genmsg("", progress=NaN, width=60) ⊏
+    r"Progress:   0%|.                    |  ETA: N/A"
+    @test genmsg("", progress=1.0, width=60) == ""
+    @test genmsg("", progress="done", width=60) == ""
+    @test genmsgs([("", (progress = 0.1,)), ("", (progress = 1.0,))], width = 60)[end] ⊏
+    r"Progress: 100%|█████████████████████| Time: 0:00:[0-9][0-9]"
+    @test genmsgs([("", (progress = 0.1,)), ("", (progress = "done",))], width = 60)[end] ⊏
+    r"Progress: 100%|█████████████████████| Time: 0:00:[0-9][0-9]"
 end
