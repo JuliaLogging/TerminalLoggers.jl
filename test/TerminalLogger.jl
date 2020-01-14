@@ -1,5 +1,3 @@
-# This file is a part of Julia. License is MIT: https://julialang.org/license
-
 import TerminalLoggers.default_metafmt
 
 @noinline func1() = backtrace()
