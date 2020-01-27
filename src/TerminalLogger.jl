@@ -28,7 +28,7 @@ struct TerminalLogger <: AbstractLogger
     right_justify::Int
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
-    bars::Dict{Any,ProgressBar}
+    bartrees::Vector{Node{ProgressBar}}
 end
 function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
@@ -41,7 +41,7 @@ function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
         right_justify,
         Dict{Any,Int}(),
         StickyMessages(stream),
-        Dict{Any,ProgressBar}(),
+        Union{}[],
     )
 end
 
@@ -103,48 +103,90 @@ function termlength(str)
     return N
 end
 
-function handle_progress(logger, message, id, progress)
-    # Don't do anything when it's already done:
-    if (progress == "done" || progress >= 1) && !haskey(logger.bars, id)
-        return
+function findbar(bartree, id)
+    if !(bartree isa AbstractArray)
+        bartree.data.id === id && return bartree
+    end
+    for node in bartree
+        found = findbar(node, id)
+        found === nothing || return found
+    end
+    return nothing
+end
+
+function foldtree(op, acc, tree)
+    for node in tree
+        acc = foldtree(op, acc, node)
+    end
+    if !(tree isa AbstractArray)
+        acc = op(acc, tree)
+    end
+    return acc
+end
+
+const BAR_MESSAGE_ID = gensym(:BAR_MESSAGE_ID)
+
+function handle_progress(logger, progress)
+    node = findbar(logger.bartrees, progress.id)
+    if node === nothing
+        progress.done && return  # don't do anything when it's already done.
+
+        parentnode = findbar(logger.bartrees, progress.parentid)
+        bar = ProgressBar(
+            fraction = progress.fraction,
+            name = progress.name,
+            id = progress.id,
+            parentid = progress.parentid,
+        )
+        if parentnode === nothing
+            node = Node(bar)
+            pushfirst!(logger.bartrees, node)
+        else
+            bar.level = parentnode.data.level + 1
+            node = addchild(parentnode, bar)
+        end
+    else
+        bar = node.data
+        set_fraction!(bar, progress.fraction)
+        if progress.name != ""
+            bar.name = progress.name
+        end
+        node.data = bar
+    end
+    if progress.done
+        if isroot(node)
+            deleteat!(logger.bartrees, findfirst(x -> x === node, logger.bartrees))
+        else
+            prunebranch!(node)
+        end
     end
 
-    try
-        bar = get!(ProgressBar, logger.bars, id)
-
-        if message == ""
-            message = "Progress: "
-        else
-            message = string(message)
-            if !endswith(message, " ")
-                message *= " "
-            end
+    bartxt = sprint(context = :displaysize => displaysize(logger.stream)) do io
+        foldtree(true, logger.bartrees) do isfirst, node
+            isfirst || println(io)
+            printprogress(io, node.data)
+            false  # next `isfirst`
         end
+    end
+    if isempty(bartxt)
+        pop!(logger.sticky_messages, BAR_MESSAGE_ID)
+    else
+        push!(logger.sticky_messages, BAR_MESSAGE_ID => bartxt)
+    end
 
-        bartxt = sprint(
-            printprogress,
-            bar,
-            message,
-            progress == "done" ? 1.0 : progress;
-            context = :displaysize => displaysize(logger.stream),
-        )
-
-        if progress == "done" || progress >= 1
-            pop!(logger.sticky_messages, id)
-            println(logger.stream, bartxt)
-        else
-            push!(logger.sticky_messages, id => bartxt)
+    # "Flushing" non-sticky message should be done after the sticky
+    # message is re-drawn:
+    if progress.done
+        donetxt = sprint(context = :displaysize => displaysize(logger.stream)) do io
+            printprogress(io, bar)
         end
-    finally
-        if progress == "done" || progress >= 1
-            pop!(logger.sticky_messages, id)  # redundant (but safe) if no error
-            pop!(logger.bars, id, nothing)
-        end
+        printstyled(logger.stream, donetxt; color=:light_black)
+        println(logger.stream)
     end
 end
 
 function handle_message(logger::TerminalLogger, level, message, _module, group, id,
-                        filepath, line; maxlog=nothing, progress=nothing,
+                        filepath, line; maxlog=nothing,
                         sticky=nothing, kwargs...)
     if maxlog !== nothing && maxlog isa Integer
         remaining = get!(logger.message_limits, id, maxlog)
@@ -152,8 +194,9 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         remaining > 0 || return
     end
 
-    if progress == "done" || progress isa Real
-        handle_progress(logger, message, id, progress)
+    progress = asprogress(level, message, _module, group, id, filepath, line; kwargs...)
+    if progress !== nothing
+        handle_progress(logger, progress)
         return
     end
 
