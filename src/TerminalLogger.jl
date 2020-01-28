@@ -131,8 +131,12 @@ function handle_progress(logger, message, id, progress)
 
         if progress == "done" || progress >= 1
             pop!(logger.sticky_messages, id)
-            println(logger.stream, bartxt)
+            printstyled(logger.stream, bartxt; color=:light_black)
+            println(logger.stream)
         else
+            bartxt = sprint(context = logger.stream) do io
+                printstyled(io, bartxt; color=:green)
+            end
             push!(logger.sticky_messages, id => bartxt)
         end
     finally
