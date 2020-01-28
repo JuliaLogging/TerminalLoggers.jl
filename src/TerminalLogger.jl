@@ -171,6 +171,9 @@ function handle_progress(logger, progress)
     if isempty(bartxt)
         pop!(logger.sticky_messages, BAR_MESSAGE_ID)
     else
+        bartxt = sprint(context = logger.stream) do io
+            printstyled(io, bartxt; color=:green)
+        end
         push!(logger.sticky_messages, BAR_MESSAGE_ID => bartxt)
     end
 
