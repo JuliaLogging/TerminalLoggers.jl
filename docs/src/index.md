@@ -20,7 +20,7 @@ atreplinit() do repl
         @eval begin
             import Logging: global_logger
             import TerminalLoggers: TerminalLogger
-            global_logger(TerminalLogger(stderr))
+            global_logger(TerminalLogger())
         end
     catch
     end
@@ -35,13 +35,13 @@ cleanly separated from the rest of the program output at the bottom of the
 terminal. Try an example like the following
 
 ```julia
-global_logger(TerminalLogger(stderr, right_justify=120))
+global_logger(TerminalLogger(right_justify=120))
 for i=1:100
-    @info "Some progress" progress=i/100
     if i == 50
         @warn "Middle of computation" i
     end
     sleep(0.01)
+    @info "Some progress" progress=i/100
 end
 @info "Done"
 ```
@@ -58,4 +58,3 @@ end
 ```@docs
 TerminalLogger
 ```
-
