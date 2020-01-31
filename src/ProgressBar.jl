@@ -1,5 +1,5 @@
 Base.@kwdef mutable struct ProgressBar
-    fraction::Float64
+    fraction::Union{Float64,Nothing}
     name::String
     level::Int = 0
     barglyphs::BarGlyphs = BarGlyphs()
@@ -9,16 +9,15 @@ Base.@kwdef mutable struct ProgressBar
     parentid::UUID
 end
 
+set_fraction!(bar::ProgressBar, ::Nothing) = bar
 function set_fraction!(bar::ProgressBar, fraction::Real)
-    if !isnan(fraction)
-        bar.tlast = time()
-        bar.fraction = fraction
-    end
+    bar.tlast = time()
+    bar.fraction = fraction
     return bar
 end
 
 function eta_seconds(bar)
-    total = (bar.tlast - bar.tfirst) / bar.fraction
+    total = (bar.tlast - bar.tfirst) / something(bar.fraction, NaN)
     return total - (time() - bar.tfirst)
 end
 
@@ -41,7 +40,7 @@ function printprogress(io::IO, bar::ProgressBar)
         bar.barglyphs,
         bar.tfirst,
         desc,
-        bar.fraction,
+        something(bar.fraction, NaN),
         eta_seconds(bar),
     )
 end
