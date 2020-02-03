@@ -18,8 +18,8 @@ snippet such as the following to your startup file (in `.julia/config/startup.jl
 atreplinit() do repl
     try
         @eval begin
-            import Logging: global_logger
-            import TerminalLoggers: TerminalLogger
+            using Logging: global_logger
+            using TerminalLoggers: TerminalLogger
             global_logger(TerminalLogger())
         end
     catch
