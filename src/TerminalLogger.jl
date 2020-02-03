@@ -2,8 +2,9 @@
     TerminalLogger(stream=stderr, min_level=$ProgressLevel; meta_formatter=default_metafmt,
                    show_limited=true, right_justify=0)
 
-Logger with formatting optimized for readability in a text console, for example
-interactive work with the Julia REPL.
+Logger with formatting optimized for interactive readability in a text console
+(for example, the Julia REPL). This is an enhanced version of the terminal
+logger `Logging.ConsoleLogger` which comes installed with Julia by default.
 
 Log levels less than `min_level` are filtered out.
 
