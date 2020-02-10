@@ -8,7 +8,7 @@ comes with the julia standard `Logging` library.
 ## Installation and setup
 
 ```julia-repl
-pkg> add https://github.com/c42f/TerminalLoggers.jl
+pkg> add TerminalLoggers
 ```
 
 To use `TerminalLogger` in all your REPL sessions by default, you may add a
