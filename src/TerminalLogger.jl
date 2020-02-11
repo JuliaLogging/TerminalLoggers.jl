@@ -30,10 +30,13 @@ struct TerminalLogger <: AbstractLogger
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
     bars::Dict{Any,ProgressBar}
+    was_table::Base.RefValue{Bool}
+    table::TableMonitor
 end
 function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
                         right_justify=0)
+    sticky_messages = StickyMessages(stream)
     TerminalLogger(
         stream,
         min_level,
@@ -41,8 +44,10 @@ function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
         show_limited,
         right_justify,
         Dict{Any,Int}(),
-        StickyMessages(stream),
+        sticky_messages,
         Dict{Any,ProgressBar}(),
+        Ref(false),
+        TableMonitor(sticky_messages),
     )
 end
 
@@ -131,6 +136,7 @@ function handle_progress(logger, message, id, progress)
         )
 
         if progress == "done" || progress >= 1
+            flush_table(logger)
             pop!(logger.sticky_messages, id)
             printstyled(logger.stream, bartxt; color=:light_black)
             println(logger.stream)
@@ -148,6 +154,36 @@ function handle_progress(logger, message, id, progress)
     end
 end
 
+struct Unspecified end
+
+function maybe_handle_table(logger, id; table = Unspecified(), _...)
+    if table isa NamedTuple
+        push!(logger.table, id => table)
+        logger.was_table[] = true
+        return true
+    elseif table === nothing
+        pop!(logger.table, id)
+        logger.was_table[] = true
+        return true
+    end
+    flush_table(logger)
+    return false
+end
+
+function flush_table(logger)
+    if logger.was_table[]
+        flush_table!(logger.table)
+
+        # To "connect" flushed rows with the current row and header in
+        # the sticky messages, `TableMonitor` do not print newline
+        # after the message.  Thus, we need to print a newline when
+        # switching to non-table message:
+        println(logger.stream)
+
+        logger.was_table[] = false
+    end
+end
+
 function handle_message(logger::TerminalLogger, level, message, _module, group, id,
                         filepath, line; maxlog=nothing, progress=nothing,
                         sticky=nothing, kwargs...)
@@ -161,6 +197,8 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         handle_progress(logger, message, id, progress)
         return
     end
+
+    maybe_handle_table(logger, id; kwargs...) && return
 
 	substr(s) = SubString(s, 1, length(s)) # julia 0.6 compat
 

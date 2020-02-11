@@ -42,6 +42,14 @@ function StickyMessages(io::IO; ansi_codes=io isa Base.TTY &&
     sticky
 end
 
+function firstline!(sticky::StickyMessages, label)
+    idx = findfirst(m -> m[1] == label, sticky.messages)
+    idx === nothing && throw(KeyError(label))
+    idx == 1 && return
+    sticky.messages[idx], sticky.messages[1] = sticky.messages[1], sticky.messages[idx]
+    return
+end
+
 # Count newlines in a message or sequence of messages
 _countlines(msg::String) = sum(c->c=='\n', msg)
 _countlines(messages) = length(messages) > 0 ? sum(_countlines, messages) : 0
@@ -93,7 +101,7 @@ function showsticky(io, prev_nlines, messages)
     nothing
 end
 
-function Base.push!(sticky::StickyMessages, message::Pair)
+function Base.push!(sticky::StickyMessages, message::Pair; first=true)
     if !sticky.ansi_codes
         write(sticky.io, message[2])
         return
@@ -103,9 +111,18 @@ function Base.push!(sticky::StickyMessages, message::Pair)
     prev_nlines = _countlines(sticky.messages)
     idx = findfirst(m->m[1] == label, sticky.messages)
     if idx === nothing
-        push!(sticky.messages, label=>text)
+        if first
+            insert!(sticky.messages, 1, label=>text)
+        else
+            push!(sticky.messages, label=>text)
+        end
     else
-        sticky.messages[idx] = label=>text
+        if first
+            sticky.messages[idx] = sticky.messages[1]
+            sticky.messages[1] = label=>text
+        else
+            sticky.messages[idx] = label=>text
+        end
     end
     showsticky(sticky.io, prev_nlines, sticky.messages)
 end
