@@ -248,13 +248,13 @@ import TerminalLoggers.default_metafmt
     ⊏(s, re) = match(re, s) !== nothing
 
     @test genmsg("", progress=0.1, width=60) ⊏
-    r"Progress:  10%\|██.                  \|  ETA: 0:00:[0-9][0-9]"
+    r"Progress:  10%\|█+.* +\|  ETA: .*"
     @test genmsg("", progress=NaN, width=60) ⊏
-    r"Progress:   0%|.                    |  ETA: N/A"
+    r"Progress:   0%|. +|  ETA: .*"
     @test genmsg("", progress=1.0, width=60) == ""
     @test genmsg("", progress="done", width=60) == ""
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = 1.0,))], width = 60)[end] ⊏
-    r"Progress: 100%|█████████████████████| Time: 0:00:[0-9][0-9]"
+    r"Progress: 100%|█+| Time: .*"
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = "done",))], width = 60)[end] ⊏
-    r"Progress: 100%|█████████████████████| Time: 0:00:[0-9][0-9]"
+    r"Progress: 100%|█+| Time: .*"
 end

@@ -129,7 +129,8 @@ const BAR_MESSAGE_ID = gensym(:BAR_MESSAGE_ID)
 function handle_progress(logger, progress)
     node = findbar(logger.bartrees, progress.id)
     if node === nothing
-        progress.done && return  # don't do anything when it's already done.
+        # Don't do anything when it's already done:
+        (progress.done || something(progress.fraction, 0.0) >= 1) && return
 
         parentnode = findbar(logger.bartrees, progress.parentid)
         bar = ProgressBar(
