@@ -7,15 +7,20 @@ using Logging:
 import Logging:
     handle_message, shouldlog, min_enabled_level, catch_exceptions
 
+using LeftChildRightSiblingTrees: Node, addchild, isroot, prunebranch!
+using ProgressLogging: asprogress
+using UUIDs: UUID
+
 export TerminalLogger
 
 const ProgressLevel = LogLevel(-1)
 
 include("ProgressMeter/ProgressMeter.jl")
 using .ProgressMeter:
-    ProgressBar, printprogress
+    BarGlyphs
 
 include("StickyMessages.jl")
+include("ProgressBar.jl")
 include("TerminalLogger.jl")
 
 end # module

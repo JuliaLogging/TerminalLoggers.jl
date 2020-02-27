@@ -21,25 +21,27 @@ BarGlyphs() = BarGlyphs(
     '|',
 )
 
-struct ProgressBar
-    barglyphs::BarGlyphs
-    tfirst::Float64
-end
-
-ProgressBar(barglyphs = BarGlyphs()) = ProgressBar(barglyphs, time())
-
 """
-    printprogress(io::IO, p::ProgressBar, desc, progress::Real)
+    printprogress(io::IO, barglyphs::BarGlyphs, tfirst::Float64, desc, progress::Real)
 
-Print progress bar to `io` with setting `p`.
+Print progress bar to `io`.
 
 # Arguments
 - `io::IO`
-- `p::ProgressBar`
+- `barglyphs::BarGlyphs`
+- `tfirst::Float64`
 - `desc`: description to be printed at left side of progress bar.
 - `progress::Real`: a number between 0 and 1 or a `NaN`.
+- `eta_seconds::Real`: ETA in seconds
 """
-function printprogress(io::IO, p::ProgressBar, desc, progress::Real)
+function printprogress(
+    io::IO,
+    barglyphs::BarGlyphs,
+    tfirst::Float64,
+    desc,
+    progress::Real,
+    eta_seconds::Real,
+)
     t = time()
     percentage_complete = 100.0 * (isnan(progress) ? 0.0 : progress)
 
@@ -47,17 +49,15 @@ function printprogress(io::IO, p::ProgressBar, desc, progress::Real)
     barlen = max(0, displaysize(io)[2] - (length(desc) + 29))
 
     if progress >= 1
-        bar = barstring(barlen, percentage_complete, barglyphs=p.barglyphs)
-        dur = durationstring(t - p.tfirst)
+        bar = barstring(barlen, percentage_complete, barglyphs=barglyphs)
+        dur = durationstring(t - tfirst)
         @printf io "%s%3u%%%s Time: %s" desc round(Int, percentage_complete) bar dur
         return
     end
 
-    bar = barstring(barlen, percentage_complete, barglyphs=p.barglyphs)
-    elapsed_time = t - p.tfirst
-    est_total_time = 100 * elapsed_time / percentage_complete
-    if 0 <= est_total_time <= typemax(Int)
-        eta_sec = round(Int, est_total_time - elapsed_time)
+    bar = barstring(barlen, percentage_complete, barglyphs=barglyphs)
+    if 0 <= eta_seconds <= typemax(Int)
+        eta_sec = round(Int, eta_seconds)
         eta = durationstring(eta_sec)
     else
         eta = "N/A"
