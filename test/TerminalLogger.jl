@@ -296,7 +296,7 @@ import TerminalLoggers.default_metafmt
         Bar2 100%\|█+\| Time: .*
         """
         @test msgs[end] ⊏ r"""
-        Bar1  40%\|█+.* +\|  ETA: .*
+        Bar1 100%\|█+\| Time: .*
         """
     end
 
@@ -343,7 +343,7 @@ import TerminalLoggers.default_metafmt
           Inner 100%\|█+\| Time: .*
         """
         @test msgs[end] ⊏ r"""
-        Outer  40%\|█+.* +\|  ETA: .*
+        Outer 100%\|█+\| Time: .*
         """
     end
 end

@@ -16,6 +16,9 @@ function set_fraction!(bar::ProgressBar, fraction::Real)
     return bar
 end
 
+# This is how `ProgressMeter.printprogress` decides "ETA" vs "Time":
+ensure_done!(bar::ProgressBar) = bar.fraction = 1
+
 function eta_seconds(bar)
     total = (bar.tlast - bar.tfirst) / something(bar.fraction, NaN)
     return total - (time() - bar.tfirst)

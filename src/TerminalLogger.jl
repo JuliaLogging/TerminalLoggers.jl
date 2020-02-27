@@ -181,6 +181,7 @@ function handle_progress(logger, progress)
     # "Flushing" non-sticky message should be done after the sticky
     # message is re-drawn:
     if progress.done
+        ensure_done!(bar)
         donetxt = sprint(context = :displaysize => displaysize(logger.stream)) do io
             printprogress(io, bar)
         end
