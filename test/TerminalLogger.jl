@@ -274,14 +274,14 @@ import TerminalLoggers.default_metafmt
             ("", (progress = "done", _id = 1111)),
         ]; width=60)
         @test msgs[1] ⊏ r"""
-        Bar1   0%\| +\|  ETA: N/A
+        Bar1   0%\|. +\|  ETA: N/A
         """
         @test msgs[3] ⊏ r"""
         Bar2 100%\|█+\| Time: .*
-        Bar1   0%\| +\|  ETA: .*
+        Bar1   0%\|. +\|  ETA: .*
         """
         @test msgs[4] ⊏ r"""
-        Bar1   0%\| +\|  ETA: .*
+        Bar1   0%\|. +\|  ETA: .*
         Bar2 100%\|█+\| Time: .*
         """
         @test msgs[5] ⊏ r"""
@@ -321,14 +321,14 @@ import TerminalLoggers.default_metafmt
             outermsg(nothing; done = true),
         ]; width=60)
         @test msgs[1] ⊏ r"""
-        Outer   0%\| +\|  ETA: N/A
+        Outer   0%\|. +\|  ETA: N/A
         """
         @test msgs[3] ⊏ r"""
           Inner 100%\|█+\| Time: .*
-        Outer   0%\| +\|  ETA: .*
+        Outer   0%\|. +\|  ETA: .*
         """
         @test msgs[4] ⊏ r"""
-        Outer   0%\| +\|  ETA: .*
+        Outer   0%\|. +\|  ETA: .*
           Inner 100%\|█+\| Time: .*
         """
         @test msgs[5] ⊏ r"""
