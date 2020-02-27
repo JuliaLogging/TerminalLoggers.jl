@@ -95,7 +95,7 @@ end
 
 function Base.push!(sticky::StickyMessages, message::Pair)
     if !sticky.ansi_codes
-        write(sticky.io, message[2])
+        println(sticky.io, rstrip(message[2]))
         return
     end
     label,text = message

@@ -52,7 +52,9 @@ import TerminalLoggers.default_metafmt
                                 right_justify=right_justify)
         prev_have_color = Base.have_color
         return map(events) do (message, kws)
-            handle_message(logger, level, message, _module, :a_group, :an_id,
+            kws = Dict(pairs(kws))
+            id = pop!(kws, :_id, :an_id)
+            handle_message(logger, level, message, _module, :a_group, id,
                            file, line; kws...)
             String(take!(buf))
         end
@@ -257,4 +259,42 @@ import TerminalLoggers.default_metafmt
     r"Progress: 100%|█+| Time: .*"
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = "done",))], width = 60)[end] ⊏
     r"Progress: 100%|█+| Time: .*"
+
+    msgs = genmsgs([
+        ("Outer", (progress = 0.0, _id = 1111)), # 1
+        ("Inner", (progress = 0.5, _id = 2222)),
+        ("Inner", (progress = 1.0, _id = 2222)), # 3
+        ("", (progress = "done", _id = 2222)),   # 4
+        ("Outer", (progress = 0.2, _id = 1111)), # 5
+        ("Inner", (progress = 0.5, _id = 2222)),
+        ("Inner", (progress = 1.0, _id = 2222)), # 7
+        ("", (progress = "done", _id = 2222)),   # 8
+        ("Outer", (progress = 0.4, _id = 1111)),
+        ("", (progress = "done", _id = 1111)),
+    ]; width=60)
+    @test msgs[1] ⊏ r"""
+    Outer   0%| +|  ETA: N/A
+    """
+    @test msgs[3] ⊏ r"""
+    Inner 100%|█+| Time: .*
+    Outer   0%| +|  ETA: .*
+    """
+    @test msgs[4] ⊏ r"""
+    Outer   0%| +|  ETA: .*
+    Inner 100%|█+| Time: .*
+    """
+    @test msgs[5] ⊏ r"""
+    Outer  20%|█+.* +|  ETA: .*
+    """
+    @test msgs[7] ⊏ r"""
+    Inner 100%|█+| Time: .*
+    Outer  20%|█+.* +|  ETA: .*
+    """
+    @test msgs[8] ⊏ r"""\
+    Outer  20%|█+.* +|  ETA: .*
+    Inner 100%|█+| Time: .*
+    """
+    @test msgs[end] ⊏ r"""
+    Outer  40%|█+.* +|  ETA: .*
+    """
 end
