@@ -252,49 +252,98 @@ import TerminalLoggers.default_metafmt
     @test genmsg("", progress=0.1, width=60) ⊏
     r"Progress:  10%\|█+.* +\|  ETA: .*"
     @test genmsg("", progress=NaN, width=60) ⊏
-    r"Progress:   0%|. +|  ETA: .*"
+    r"Progress:   0%\|. +\|  ETA: .*"
     @test genmsg("", progress=1.0, width=60) == ""
     @test genmsg("", progress="done", width=60) == ""
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = 1.0,))], width = 60)[end] ⊏
-    r"Progress: 100%|█+| Time: .*"
+    r"Progress: 100%\|█+\| Time: .*"
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = "done",))], width = 60)[end] ⊏
-    r"Progress: 100%|█+| Time: .*"
+    r"Progress: 100%\|█+\| Time: .*"
 
-    msgs = genmsgs([
-        ("Outer", (progress = 0.0, _id = 1111)), # 1
-        ("Inner", (progress = 0.5, _id = 2222)),
-        ("Inner", (progress = 1.0, _id = 2222)), # 3
-        ("", (progress = "done", _id = 2222)),   # 4
-        ("Outer", (progress = 0.2, _id = 1111)), # 5
-        ("Inner", (progress = 0.5, _id = 2222)),
-        ("Inner", (progress = 1.0, _id = 2222)), # 7
-        ("", (progress = "done", _id = 2222)),   # 8
-        ("Outer", (progress = 0.4, _id = 1111)),
-        ("", (progress = "done", _id = 1111)),
-    ]; width=60)
-    @test msgs[1] ⊏ r"""
-    Outer   0%| +|  ETA: N/A
-    """
-    @test msgs[3] ⊏ r"""
-    Inner 100%|█+| Time: .*
-    Outer   0%| +|  ETA: .*
-    """
-    @test msgs[4] ⊏ r"""
-    Outer   0%| +|  ETA: .*
-    Inner 100%|█+| Time: .*
-    """
-    @test msgs[5] ⊏ r"""
-    Outer  20%|█+.* +|  ETA: .*
-    """
-    @test msgs[7] ⊏ r"""
-    Inner 100%|█+| Time: .*
-    Outer  20%|█+.* +|  ETA: .*
-    """
-    @test msgs[8] ⊏ r"""\
-    Outer  20%|█+.* +|  ETA: .*
-    Inner 100%|█+| Time: .*
-    """
-    @test msgs[end] ⊏ r"""
-    Outer  40%|█+.* +|  ETA: .*
-    """
+    @testset "Independent progress bars" begin
+        msgs = genmsgs([
+            ("Bar1", (progress = 0.0, _id = 1111)), # 1
+            ("Bar2", (progress = 0.5, _id = 2222)),
+            ("Bar2", (progress = 1.0, _id = 2222)), # 3
+            ("", (progress = "done", _id = 2222)),   # 4
+            ("Bar1", (progress = 0.2, _id = 1111)), # 5
+            ("Bar2", (progress = 0.5, _id = 2222)),
+            ("Bar2", (progress = 1.0, _id = 2222)), # 7
+            ("", (progress = "done", _id = 2222)),   # 8
+            ("Bar1", (progress = 0.4, _id = 1111)),
+            ("", (progress = "done", _id = 1111)),
+        ]; width=60)
+        @test msgs[1] ⊏ r"""
+        Bar1   0%\| +\|  ETA: N/A
+        """
+        @test msgs[3] ⊏ r"""
+        Bar2 100%\|█+\| Time: .*
+        Bar1   0%\| +\|  ETA: .*
+        """
+        @test msgs[4] ⊏ r"""
+        Bar1   0%\| +\|  ETA: .*
+        Bar2 100%\|█+\| Time: .*
+        """
+        @test msgs[5] ⊏ r"""
+        Bar1  20%\|█+.* +\|  ETA: .*
+        """
+        @test msgs[7] ⊏ r"""
+        Bar2 100%\|█+\| Time: .*
+        Bar1  20%\|█+.* +\|  ETA: .*
+        """
+        @test msgs[8] ⊏ r"""
+        Bar1  20%\|█+.* +\|  ETA: .*
+        Bar2 100%\|█+\| Time: .*
+        """
+        @test msgs[end] ⊏ r"""
+        Bar1  40%\|█+.* +\|  ETA: .*
+        """
+    end
+
+    @testset "Nested progress bars" begin
+        id_outer = UUID(100)
+        id_inner_1 = UUID(201)
+        id_inner_2 = UUID(202)
+        outermsg(fraction; kw...) =
+            (Progress(id_outer, fraction; name = "Outer", kw...), Dict())
+        innermsg(id, fraction; kw...) =
+            (Progress(id, fraction; name = "Inner", parentid = id_outer, kw...), Dict())
+        msgs = genmsgs([
+            outermsg(0.0),                              # 1
+            innermsg(id_inner_1, 0.5),
+            innermsg(id_inner_1, 1.0),                  # 3
+            innermsg(id_inner_1, nothing; done = true), # 4
+            outermsg(0.2),                              # 5
+            innermsg(id_inner_2, 0.5),
+            innermsg(id_inner_2, 1.0),                  # 7
+            innermsg(id_inner_2, nothing; done = true), # 8
+            outermsg(0.4),
+            outermsg(nothing; done = true),
+        ]; width=60)
+        @test msgs[1] ⊏ r"""
+        Outer   0%\| +\|  ETA: N/A
+        """
+        @test msgs[3] ⊏ r"""
+          Inner 100%\|█+\| Time: .*
+        Outer   0%\| +\|  ETA: .*
+        """
+        @test msgs[4] ⊏ r"""
+        Outer   0%\| +\|  ETA: .*
+          Inner 100%\|█+\| Time: .*
+        """
+        @test msgs[5] ⊏ r"""
+        Outer  20%\|█+.* +\|  ETA: .*
+        """
+        @test msgs[7] ⊏ r"""
+          Inner 100%\|█+\| Time: .*
+        Outer  20%\|█+.* +\|  ETA: .*
+        """
+        @test msgs[8] ⊏ r"""
+        Outer  20%\|█+.* +\|  ETA: .*
+          Inner 100%\|█+\| Time: .*
+        """
+        @test msgs[end] ⊏ r"""
+        Outer  40%\|█+.* +\|  ETA: .*
+        """
+    end
 end
