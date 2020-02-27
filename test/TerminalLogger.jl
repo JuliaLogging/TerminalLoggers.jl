@@ -265,11 +265,11 @@ import TerminalLoggers.default_metafmt
             ("Bar1", (progress = 0.0, _id = 1111)), # 1
             ("Bar2", (progress = 0.5, _id = 2222)),
             ("Bar2", (progress = 1.0, _id = 2222)), # 3
-            ("", (progress = "done", _id = 2222)),   # 4
+            ("", (progress = "done", _id = 2222)),  # 4
             ("Bar1", (progress = 0.2, _id = 1111)), # 5
             ("Bar2", (progress = 0.5, _id = 2222)),
             ("Bar2", (progress = 1.0, _id = 2222)), # 7
-            ("", (progress = "done", _id = 2222)),   # 8
+            ("", (progress = "done", _id = 2222)),  # 8
             ("Bar1", (progress = 0.4, _id = 1111)),
             ("", (progress = "done", _id = 1111)),
         ]; width=60)
