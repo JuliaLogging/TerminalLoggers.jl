@@ -2,6 +2,54 @@ using TerminalLoggers: default_metafmt, format_message
 
 @noinline func1() = backtrace()
 
+function dummy_metafmt(level, _module, group, id, file, line)
+    :cyan,"PREFIX","SUFFIX"
+end
+
+# Log formatting
+function genmsgs(events; level=Info, _module=Main,
+                 file="some/path.jl", line=101, color=false, width=75,
+                 meta_formatter=dummy_metafmt, show_limited=true,
+                 right_justify=0)
+    buf = IOBuffer()
+    io = IOContext(buf, :displaysize=>(30,width), :color=>color)
+    logger = TerminalLogger(io, Debug,
+                            meta_formatter=meta_formatter,
+                            show_limited=show_limited,
+                            right_justify=right_justify)
+    prev_have_color = Base.have_color
+    return map(events) do (message, kws)
+        kws = Dict(pairs(kws))
+        id = pop!(kws, :_id, :an_id)
+        # Avoid markdown formatting while testing layouting. Don't wrap
+        # progress messages though; ProgressLogging.asprogress() doesn't
+        # like that.
+        is_progress = message isa Progress || haskey(kws, :progress)
+        handle_message(logger, level, message, _module, :a_group, id,
+                       file, line; kws...)
+        String(take!(buf))
+    end
+end
+
+function genmsg(message; kwargs...)
+    kws = Dict(kwargs)
+    logconfig = Dict(
+        k => pop!(kws, k)
+        for k in [
+            :level,
+            :_module,
+            :file,
+            :line,
+            :color,
+            :width,
+            :meta_formatter,
+            :show_limited,
+            :right_justify,
+        ] if haskey(kws, k)
+    )
+    return genmsgs([(message, kws)]; logconfig...)[1]
+end
+
 @testset "TerminalLogger" begin
     # First pass log limiting
     @test min_enabled_level(TerminalLogger(devnull, Debug)) == Debug
@@ -34,55 +82,6 @@ using TerminalLoggers: default_metafmt, format_message
         @test default_metafmt(Warn,  Main, :g, :i, "b.jl", 2:5) ==
             (:yellow,    "Warning:", "@ Main b.jl:2-5")
     end
-
-    function dummy_metafmt(level, _module, group, id, file, line)
-        :cyan,"PREFIX","SUFFIX"
-    end
-
-    # Log formatting
-    function genmsgs(events; level=Info, _module=Main,
-                     file="some/path.jl", line=101, color=false, width=75,
-                     meta_formatter=dummy_metafmt, show_limited=true,
-                     right_justify=0)
-        buf = IOBuffer()
-        io = IOContext(buf, :displaysize=>(30,width), :color=>color)
-        logger = TerminalLogger(io, Debug,
-                                meta_formatter=meta_formatter,
-                                show_limited=show_limited,
-                                right_justify=right_justify)
-        prev_have_color = Base.have_color
-        return map(events) do (message, kws)
-            kws = Dict(pairs(kws))
-            id = pop!(kws, :_id, :an_id)
-            # Avoid markdown formatting while testing layouting. Don't wrap
-            # progress messages though; ProgressLogging.asprogress() doesn't
-            # like that.
-            is_progress = message isa Progress || haskey(kws, :progress)
-            handle_message(logger, level, message, _module, :a_group, id,
-                           file, line; kws...)
-            String(take!(buf))
-        end
-    end
-
-    function genmsg(message; kwargs...)
-        kws = Dict(kwargs)
-        logconfig = Dict(
-            k => pop!(kws, k)
-            for k in [
-                :level,
-                :_module,
-                :file,
-                :line,
-                :color,
-                :width,
-                :meta_formatter,
-                :show_limited,
-                :right_justify,
-            ] if haskey(kws, k)
-        )
-        return genmsgs([(message, kws)]; logconfig...)[1]
-    end
-
 
     # Basic tests for the default setup
     @test genmsg("msg", level=Info, meta_formatter=default_metafmt) ==
