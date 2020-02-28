@@ -1,3 +1,5 @@
+using Markdown
+
 """
     TerminalLogger(stream=stderr, min_level=$ProgressLevel; meta_formatter=default_metafmt,
                    show_limited=true, right_justify=0)
@@ -104,6 +106,46 @@ function termlength(str)
     return N
 end
 
+function format_message(message, prefix_width, io_context)
+    formatted = sprint(show, MIME"text/plain"(), message, context=io_context)
+    msglines = split(chomp(formatted), '\n')
+    if length(msglines) > 1
+        # For multi-line messages it's possible that the message was carefully
+        # formatted with vertical alignemnt. Therefore we play it safe by
+        # prepending a blank line.
+        pushfirst!(msglines, SubString(""))
+    end
+    msglines
+end
+
+function format_message(message::AbstractString, prefix_width, io_context)
+    # For strings, use Markdown to do the formatting. The markdown renderer
+    # isn't very composable with other text formatting so this is quite hacky.
+    message = Markdown.parse(message)
+    prepend_prefix = !isempty(message.content) &&
+                     message.content[1] isa Markdown.Paragraph
+    if prepend_prefix
+        # Hack: We prepend the prefix here to allow the markdown renderer to be
+        # aware of the indenting which will result from prepending the prefix.
+        # Without this we will get many issues of broken vertical alignment.
+        # Avoid collisions: using placeholder from unicode private use area
+        placeholder = '\uF8FF'^prefix_width
+        pushfirst!(message.content[1].content, placeholder)
+    end
+    formatted = sprint(show, MIME"text/plain"(), message, context=io_context)
+    msglines = split(chomp(formatted), '\n')
+    # Hack': strip left margin which can't be configured in Markdown
+    # terminal rendering.
+    msglines = [startswith(s, "  ") ? s[3:end] : s for s in msglines]
+    if prepend_prefix
+        # Hack'': Now remove the prefix from the rendered markdown.
+        msglines[1] = replace(msglines[1], placeholder=>""; count=1)
+    elseif !isempty(msglines[1])
+        pushfirst!(msglines, SubString(""))
+    end
+    msglines
+end
+
 function findbar(bartree, id)
     if !(bartree isa AbstractArray)
         bartree.data.id === id && return bartree
@@ -208,10 +250,15 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
 
 	substr(s) = SubString(s, 1, length(s)) # julia 0.6 compat
 
-    # Generate a text representation of the message and all key value pairs,
-    # split into lines.
-    msglines = [(0,l) for l in split(chomp(string(message)), '\n')]
+    color,prefix,suffix = logger.meta_formatter(level, _module, group, id, filepath, line)
+
+    # Generate a text representation of the message
     dsize = displaysize(logger.stream)
+    msglines = format_message(message, textwidth(prefix),
+                              IOContext(logger.stream, :displaysize=>(dsize[1],dsize[2]-2)))
+    # Add indentation level
+    msglines = [(0,l) for l in msglines]
+    # Generate a text representation of all key value pairs, split into lines.
     if !isempty(kwargs)
         valbuf = IOBuffer()
         rows_per_value = max(1, dsize[1]÷(length(kwargs)+1))
@@ -234,7 +281,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
 
     # Format lines as text with appropriate indentation and with a box
     # decoration on the left.
-    color,prefix,suffix = logger.meta_formatter(level, _module, group, id, filepath, line)
     minsuffixpad = 2
     buf = IOBuffer()
     iob = IOContext(buf, logger.stream)

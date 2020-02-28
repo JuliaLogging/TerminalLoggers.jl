@@ -1,4 +1,4 @@
-import TerminalLoggers.default_metafmt
+using TerminalLoggers: default_metafmt, format_message
 
 @noinline func1() = backtrace()
 
@@ -54,11 +54,16 @@ import TerminalLoggers.default_metafmt
         return map(events) do (message, kws)
             kws = Dict(pairs(kws))
             id = pop!(kws, :_id, :an_id)
+            # Avoid markdown formatting while testing layouting. Don't wrap
+            # progress messages though; ProgressLogging.asprogress() doesn't
+            # like that.
+            is_progress = message isa Progress || haskey(kws, :progress)
             handle_message(logger, level, message, _module, :a_group, id,
                            file, line; kws...)
             String(take!(buf))
         end
     end
+
     function genmsg(message; kwargs...)
         kws = Dict(kwargs)
         logconfig = Dict(
@@ -78,16 +83,16 @@ import TerminalLoggers.default_metafmt
         return genmsgs([(message, kws)]; logconfig...)[1]
     end
 
+
     # Basic tests for the default setup
     @test genmsg("msg", level=Info, meta_formatter=default_metafmt) ==
     """
     [ Info: msg
     """
-    @test genmsg("line1\nline2", level=Warn, _module=Base,
+    @test genmsg("msg", level=Warn, _module=Base,
                  file="other.jl", line=42, meta_formatter=default_metafmt) ==
     """
-    ┌ Warning: line1
-    │ line2
+    ┌ Warning: msg
     └ @ Base other.jl:42
     """
     # Full metadata formatting
@@ -127,10 +132,10 @@ import TerminalLoggers.default_metafmt
         """
         [ PREFIX xxx  SUFFIX
         """
-        @test genmsg("xxx\nxxx", width=20, right_justify=200) ==
+        @test genmsg("xxxxxxxx xxxxxxxx", width=20, right_justify=200) ==
         """
-        ┌ PREFIX xxx
-        └ xxx         SUFFIX
+        ┌ PREFIX xxxxxxxx
+        └ xxxxxxxx    SUFFIX
         """
         # When adding the suffix would overflow the display width, add it on
         # the next line:
@@ -239,9 +244,10 @@ import TerminalLoggers.default_metafmt
     end
 
     # Basic colorization test.
-    @test genmsg("line1\nline2", color=true) ==
+    @test genmsg("line1\n\nline2", color=true) ==
     """
     \e[36m\e[1m┌ \e[22m\e[39m\e[36m\e[1mPREFIX \e[22m\e[39mline1
+    \e[36m\e[1m│ \e[22m\e[39m
     \e[36m\e[1m│ \e[22m\e[39mline2
     \e[36m\e[1m└ \e[22m\e[39m\e[90mSUFFIX\e[39m
     """
@@ -259,6 +265,34 @@ import TerminalLoggers.default_metafmt
     r"Progress: 100%\|█+\| Time: .*"
     @test genmsgs([("", (progress = 0.1,)), ("", (progress = "done",))], width = 60)[end] ⊏
     r"Progress: 100%\|█+\| Time: .*"
+
+    @testset "Message formatting" begin
+        io_ctx = IOContext(IOBuffer(), :displaysize=>(20,20))
+
+        # Short paragraph on a single line
+        @test format_message("Hi `code`", 6, io_ctx) ==
+            ["Hi code"]
+
+        # Longer paragraphs wrap around the prefix
+        @test format_message("x x x x x x x x x x x x x x x x x x x x x", 6, io_ctx) ==
+             ["x x x x x"
+              "x x x x x x x x"
+              "x x x x x x x x"]
+
+        # Markdown block elements get their own lines
+        @test format_message("# Hi", 6, io_ctx) ==
+            ["",
+             "Hi",
+             "≡≡≡≡"]
+
+        # For non-strings a blank line is added so that any formatting for
+        # vertical alignment isn't broken
+        @test format_message([1 2; 3 4], 6, io_ctx) ==
+            ["",
+             "2×2 Array{Int64,2}:",
+             " 1  2",
+             " 3  4"]
+    end
 
     @testset "Independent progress bars" begin
         msgs = genmsgs([
