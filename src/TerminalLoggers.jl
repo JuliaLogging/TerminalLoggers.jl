@@ -1,5 +1,10 @@
 module TerminalLoggers
 
+@doc let path = joinpath(dirname(@__DIR__), "README.md")
+    include_dependency(path)
+    replace(read(path, String), "```julia" => "```jldoctest")
+end TerminalLoggers
+
 using Logging:
     AbstractLogger,
     LogLevel, BelowMinLevel, Debug, Info, Warn, Error, AboveMaxLevel
