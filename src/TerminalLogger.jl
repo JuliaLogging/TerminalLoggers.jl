@@ -53,14 +53,6 @@ shouldlog(logger::TerminalLogger, level, _module, group, id) =
 
 min_enabled_level(logger::TerminalLogger) = logger.min_level
 
-# Formatting of values in key value pairs
-showvalue(io, msg) = show(io, "text/plain", msg)
-function showvalue(io, e::Tuple{Exception,Any})
-    ex,bt = e
-    showerror(io, ex, bt; backtrace = bt!=nothing)
-end
-showvalue(io, ex::Exception) = showerror(io, ex)
-
 function default_logcolor(level)
     level < Info  ? :blue :
     level < Warn  ? Base.info_color()  :
@@ -146,6 +138,35 @@ function format_message(message::AbstractString, prefix_width, io_context)
     msglines
 end
 
+# Formatting of values in key value pairs
+showvalue(io, msg) = show(io, "text/plain", msg)
+function showvalue(io, e::Tuple{Exception,Any})
+    ex,bt = e
+    showerror(io, ex, bt; backtrace = bt!=nothing)
+end
+showvalue(io, ex::Exception) = showerror(io, ex)
+
+# Generate a text representation of all key value pairs, split into lines with
+# per-line indentation as an integer.
+function format_key_value_pairs(kwargs, io_context)
+    msglines = Tuple{Int,String}[]
+    valbuf = IOBuffer()
+    dsize = displaysize(io_context)
+    rows_per_value = max(1, dsize[1]÷(length(kwargs)+1))
+    valio = IOContext(valbuf, IOContext(io_context, :displaysize=>(rows_per_value,dsize[2]-3)))
+    for (key,val) in kwargs
+        showvalue(valio, val)
+        vallines = split(String(take!(valbuf)), '\n')
+        if length(vallines) == 1
+            push!(msglines, (2,SubString("$key = $(vallines[1])")))
+        else
+            push!(msglines, (2,SubString("$key =")))
+            append!(msglines, ((3,line) for line in vallines))
+        end
+    end
+    msglines
+end
+
 function findbar(bartree, id)
     if !(bartree isa AbstractArray)
         bartree.data.id === id && return bartree
@@ -169,7 +190,7 @@ end
 
 const BAR_MESSAGE_ID = gensym(:BAR_MESSAGE_ID)
 
-function handle_progress(logger, progress)
+function handle_progress(logger, progress, kwargs)
     node = findbar(logger.bartrees, progress.id)
     if node === nothing
         # Don't do anything when it's already done:
@@ -244,39 +265,21 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
 
     progress = asprogress(level, message, _module, group, id, filepath, line; kwargs...)
     if progress !== nothing
-        handle_progress(logger, progress)
+        handle_progress(logger, progress, kwargs)
         return
     end
-
-	substr(s) = SubString(s, 1, length(s)) # julia 0.6 compat
 
     color,prefix,suffix = logger.meta_formatter(level, _module, group, id, filepath, line)
 
     # Generate a text representation of the message
     dsize = displaysize(logger.stream)
-    msglines = format_message(message, textwidth(prefix),
-                              IOContext(logger.stream, :displaysize=>(dsize[1],dsize[2]-2)))
+    context = IOContext(logger.stream, :displaysize=>(dsize[1],dsize[2]-2))
+    msglines = format_message(message, textwidth(prefix), context)
     # Add indentation level
     msglines = [(0,l) for l in msglines]
-    # Generate a text representation of all key value pairs, split into lines.
     if !isempty(kwargs)
-        valbuf = IOBuffer()
-        rows_per_value = max(1, dsize[1]÷(length(kwargs)+1))
-        valio = IOContext(IOContext(valbuf, logger.stream),
-                          :displaysize=>(rows_per_value,dsize[2]-5))
-        if logger.show_limited
-            valio = IOContext(valio, :limit=>true)
-        end
-        for (key,val) in kwargs
-            showvalue(valio, val)
-            vallines = split(String(take!(valbuf)), '\n')
-            if length(vallines) == 1
-                push!(msglines, (2,substr("$key = $(vallines[1])")))
-            else
-                push!(msglines, (2,substr("$key =")))
-                append!(msglines, ((3,line) for line in vallines))
-            end
-        end
+        ctx = logger.show_limited ? IOContext(context, :limit=>true) : context
+        append!(msglines, format_key_value_pairs(kwargs, ctx))
     end
 
     # Format lines as text with appropriate indentation and with a box
@@ -289,7 +292,7 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
                   (isempty(suffix) ? 0 : length(suffix)+minsuffixpad)
     justify_width = min(logger.right_justify, dsize[2])
     if nonpadwidth > justify_width && !isempty(suffix)
-        push!(msglines, (0,substr("")))
+        push!(msglines, (0,SubString("")))
         minsuffixpad = 0
         nonpadwidth = 2 + length(suffix)
     end
