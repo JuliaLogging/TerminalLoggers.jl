@@ -43,7 +43,7 @@ function printprogress(io::IO, bar::ProgressBar)
         bar.barglyphs,
         bar.tfirst,
         desc,
-        something(bar.fraction, NaN),
+        bar.fraction,
         eta_seconds(bar),
     )
 end

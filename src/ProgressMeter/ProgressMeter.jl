@@ -39,16 +39,16 @@ function printprogress(
     barglyphs::BarGlyphs,
     tfirst::Float64,
     desc,
-    progress::Real,
+    progress::Union{Float64,Nothing},
     eta_seconds::Real,
 )
     t = time()
-    percentage_complete = 100.0 * (isnan(progress) ? 0.0 : progress)
+    percentage_complete = 100.0 * (isnothing(progress) || isnan(progress) ? 0.0 : progress)
 
     #...length of percentage and ETA string with days is 29 characters
     barlen = max(0, displaysize(io)[2] - (length(desc) + 29))
 
-    if progress >= 1
+    if !isnothing(progress) && progress >= 1
         bar = barstring(barlen, percentage_complete, barglyphs=barglyphs)
         dur = durationstring(t - tfirst)
         @printf io "%s%3u%%%s Time: %s" desc round(Int, percentage_complete) bar dur
