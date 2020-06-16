@@ -44,6 +44,11 @@ function printprogress(
 )
     t = time()
     percentage_complete = 100.0 * (isnan(progress) ? 0.0 : progress)
+    round_perc_ = try
+        round(Int, percentage_complete)
+    catch
+        0
+    end
 
     #...length of percentage and ETA string with days is 29 characters
     barlen = max(0, displaysize(io)[2] - (length(desc) + 29))
@@ -51,7 +56,7 @@ function printprogress(
     if progress >= 1
         bar = barstring(barlen, percentage_complete, barglyphs=barglyphs)
         dur = durationstring(t - tfirst)
-        @printf io "%s%3u%%%s Time: %s" desc round(Int, percentage_complete) bar dur
+        @printf io "%s%3u%%%s Time: %s" desc round_perc_ bar dur
         return
     end
 
@@ -62,7 +67,7 @@ function printprogress(
     else
         eta = "N/A"
     end
-    @printf io "%s%3u%%%s  ETA: %s" desc round(Int, percentage_complete) bar eta
+    @printf io "%s%3u%%%s  ETA: %s" desc round_perc_ bar eta
     return
 end
 
