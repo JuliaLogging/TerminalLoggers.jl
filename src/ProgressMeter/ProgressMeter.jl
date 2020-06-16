@@ -111,4 +111,12 @@ function durationstring(nsec)
     hhmmss
 end
 
+# issue #31: isnothing require Julia 1.1
+# copy-over from
+# https://github.com/JuliaLang/julia/blob/0413ef0e4de83b41b637ba02cc63314da45fe56b/base/some.jl
+if !isdefined(Base, :isnothing)
+    isnothing(::Any) = false
+    isnothing(::Nothing) = true
+end
+
 end
