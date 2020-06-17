@@ -22,7 +22,7 @@ BarGlyphs() = BarGlyphs(
 )
 
 """
-    printprogress(io::IO, barglyphs::BarGlyphs, tfirst::Float64, desc, progress::Union{Float64, Nothing})
+    printprogress(io::IO, barglyphs::BarGlyphs, tfirst::Float64, desc, progress, eta_seconds::Real)
 
 Print progress bar to `io`.
 
@@ -31,7 +31,7 @@ Print progress bar to `io`.
 - `barglyphs::BarGlyphs`
 - `tfirst::Float64`
 - `desc`: description to be printed at left side of progress bar.
-- `progress::Union{Float64, Nothing}`: a number between 0 and 1 or `nothing`.
+- `progress`: a number between 0 and 1 or `nothing`.
 - `eta_seconds::Real`: ETA in seconds
 """
 function printprogress(
@@ -39,7 +39,7 @@ function printprogress(
     barglyphs::BarGlyphs,
     tfirst::Float64,
     desc,
-    progress::Union{Float64, Nothing},
+    progress,
     eta_seconds::Real,
 )
     t = time()
