@@ -24,6 +24,7 @@ function eta_seconds(bar)
     return total - (time() - bar.tfirst)
 end
 
+
 function printprogress(io::IO, bar::ProgressBar)
     if bar.name == ""
         desc = "Progress: "
@@ -43,7 +44,7 @@ function printprogress(io::IO, bar::ProgressBar)
         bar.barglyphs,
         bar.tfirst,
         desc,
-        something(bar.fraction, NaN),
+        bar.fraction,
         eta_seconds(bar),
     )
 end

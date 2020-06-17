@@ -22,7 +22,7 @@ BarGlyphs() = BarGlyphs(
 )
 
 """
-    printprogress(io::IO, barglyphs::BarGlyphs, tfirst::Float64, desc, progress::Real)
+    printprogress(io::IO, barglyphs::BarGlyphs, tfirst::Float64, desc, progress, eta_seconds::Real)
 
 Print progress bar to `io`.
 
@@ -31,7 +31,7 @@ Print progress bar to `io`.
 - `barglyphs::BarGlyphs`
 - `tfirst::Float64`
 - `desc`: description to be printed at left side of progress bar.
-- `progress::Real`: a number between 0 and 1 or a `NaN`.
+- `progress`: a number between 0 and 1 or `nothing`.
 - `eta_seconds::Real`: ETA in seconds
 """
 function printprogress(
@@ -39,16 +39,16 @@ function printprogress(
     barglyphs::BarGlyphs,
     tfirst::Float64,
     desc,
-    progress::Real,
+    progress,
     eta_seconds::Real,
 )
     t = time()
-    percentage_complete = 100.0 * (isnan(progress) ? 0.0 : progress)
+    percentage_complete = 100.0 * (isnothing(progress) || isnan(progress) ? 0.0 : progress)
 
     #...length of percentage and ETA string with days is 29 characters
     barlen = max(0, displaysize(io)[2] - (length(desc) + 29))
 
-    if progress >= 1
+    if !isnothing(progress) && progress >= 1
         bar = barstring(barlen, percentage_complete, barglyphs=barglyphs)
         dur = durationstring(t - tfirst)
         @printf io "%s%3u%%%s Time: %s" desc round(Int, percentage_complete) bar dur
@@ -109,6 +109,14 @@ function durationstring(nsec)
         return @sprintf "%u days, %s" days hhmmss
     end
     hhmmss
+end
+
+# issue #31: isnothing require Julia 1.1
+# copy-over from
+# https://github.com/JuliaLang/julia/blob/0413ef0e4de83b41b637ba02cc63314da45fe56b/base/some.jl
+if !isdefined(Base, :isnothing)
+    isnothing(::Any) = false
+    isnothing(::Nothing) = true
 end
 
 end
