@@ -195,6 +195,17 @@ end
     │    Stacktrace:
     │     [1] func1() at""")
 
+    # Exception stacks
+    excstack = try
+        error("Root cause")
+    catch
+        try
+            error("An exception")
+        catch
+            Base.catch_stack()
+        end
+    end
+    @test occursin(r"An exception.*Stacktrace.*caused by.*Root cause.*Stacktrace"s, genmsg("msg", exception=excstack))
 
     @testset "Limiting large data structures" begin
         @test genmsg("msg", a=fill(1.00001, 100,100), b=fill(2.00002, 10,10)) ==
