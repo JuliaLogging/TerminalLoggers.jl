@@ -141,17 +141,22 @@ end
 # Formatting of values in key value pairs
 function showvalue(io, key, msg)
     if key === :exception && msg isa Vector && length(msg) > 1 && msg[1] isa Tuple{Exception,Any}
-        # Ugly code path to support passing exception=Base.catch_stack()
-        # We don't have a useful "Exception Stack" type to look for here until
-        # https://github.com/JuliaLang/julia/pull/29901 gets unstuck.
-        Base.show_exception_stack(io, msg)
+        if VERSION >= v"1.2"
+            # Ugly code path to support passing exception=Base.catch_stack() We
+            # don't have a useful "Exception Stack" type to look for here until
+            # https://github.com/JuliaLang/julia/pull/29901 gets unstuck.
+            Base.show_exception_stack(io, msg)
+        else
+            # v1.0 and 1.1 don't have Base.show_exception_stack
+            show(io, "text/plain", msg)
+        end
     else
         show(io, "text/plain", msg)
     end
 end
 function showvalue(io, key, e::Tuple{Exception,Any})
     ex,bt = e
-    showerror(io, ex, bt; backtrace = bt!=nothing)
+    showerror(io, ex, bt; backtrace = bt!==nothing)
 end
 showvalue(io, key, ex::Exception) = showerror(io, ex)
 
