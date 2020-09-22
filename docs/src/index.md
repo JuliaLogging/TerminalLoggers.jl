@@ -56,6 +56,7 @@ from the [`ProgressLogging` package](https://junolab.org/ProgressLogging.jl/stab
 For easy to use progress reporting you can therefore use the `@progress` macro:
 
 ```julia
+using Logging: global_logger
 global_logger(TerminalLogger(right_justify=120))
 using ProgressLogging
 
