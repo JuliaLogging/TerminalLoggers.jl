@@ -68,7 +68,7 @@ function default_metafmt(level, _module, group, id, file, line)
     _module !== nothing && (suffix *= "$(_module)")
     if file !== nothing
         _module !== nothing && (suffix *= " ")
-        suffix *= file
+        suffix *= string(file)
         if line !== nothing
             suffix *= ":$(isa(line, UnitRange) ? "$(first(line))-$(last(line))" : line)"
         end
@@ -148,10 +148,10 @@ function showvalue(io, key, msg)
             Base.show_exception_stack(io, msg)
         else
             # v1.0 and 1.1 don't have Base.show_exception_stack
-            show(io, "text/plain", msg)
+            show(io, MIME"text/plain"(), msg)
         end
     else
-        show(io, "text/plain", msg)
+        show(io, MIME"text/plain"(), msg)
     end
 end
 function showvalue(io, key, e::Tuple{Exception,Any})
