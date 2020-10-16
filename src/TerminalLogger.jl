@@ -29,19 +29,21 @@ struct TerminalLogger <: AbstractLogger
     meta_formatter
     show_limited::Bool
     right_justify::Int
+    always_flush::Bool
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
     bartrees::Vector{Node{ProgressBar}}
 end
 function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
-                        right_justify=0)
+                        right_justify=0, always_flush=false)
     TerminalLogger(
         stream,
         min_level,
         meta_formatter,
         show_limited,
         right_justify,
+        always_flush,
         Dict{Any,Int}(),
         StickyMessages(stream),
         Union{}[],
@@ -266,6 +268,10 @@ function handle_progress(logger, progress, kwargs)
         printstyled(logger.stream, donetxt; color=:light_black)
         println(logger.stream)
     end
+
+    if logger.always_flush
+        flush(logger.stream)
+    end
 end
 
 function handle_message(logger::TerminalLogger, level, message, _module, group, id,
@@ -338,6 +344,11 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
     else
         write(logger.stream, msg)
     end
+    
+    if logger.always_flush
+        flush(logger.stream)
+    end
+
     nothing
 end
 
