@@ -72,10 +72,8 @@ end
 ```
 
 !!! note
-    Rendering progress bars separately doesn't yet work on windows due to
-    limitations of the windows console and its interaction with libuv.
-    We expect this will eventually be solved with some combination of libuv
-    updates and the new windows terminal.
+    On Windows, rendering progress bars requires julia 1.5.3 or later,
+    and scrolling works best on a modern terminal like Windows Terminal.
 
 You can also use the older progress logging API with the `progress=fraction`
 key value pair. This is simpler but has some downsides such as not interacting
