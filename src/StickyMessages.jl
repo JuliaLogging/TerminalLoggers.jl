@@ -1,5 +1,6 @@
 """
-    StickyMessages(io::IO; ansi_codes=io isa Base.TTY && !Sys.iswindows())
+    StickyMessages(io::IO; ansi_codes=io isa Base.TTY && 
+                   (!Sys.iswindows() || VERSION >= v"1.5.3"))
 
 A `StickyMessages` type manages the display of a set of persistent "sticky"
 messages in a terminal. That is, messages which are not part of the normal
@@ -19,11 +20,8 @@ mutable struct StickyMessages
 end
 
 function StickyMessages(io::IO; ansi_codes=io isa Base.TTY &&
-        # Give up on Windows for now, as libuv doesn't recognize the scroll region code.
-        # Will need to be fixed in libuv and thence julia, but first libuv PR 1884 should merge. See
-        # https://github.com/libuv/libuv/pull/1884
-        # https://github.com/JuliaLang/libuv/commit/ed3700c849289ed01fe04273a7bf865340b2bd7e
-                                    !Sys.iswindows())
+        # scroll region code on Windows only works with recent libuv, present in 1.5.3+
+        (!Sys.iswindows() || VERSION >= v"1.5.3"))
     sticky = StickyMessages(io, ansi_codes, Vector{Pair{Any,String}}())
     # Ensure we clean up the terminal
     finalizer(sticky) do sticky
