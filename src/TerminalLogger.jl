@@ -335,6 +335,12 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
         end
         println(iob)
     end
+    
+    if sticky === nothing
+        for _ in 1:logger.margin
+            println(iob)
+        end
+    end
 
     msg = take!(buf)
     if sticky !== nothing
@@ -344,9 +350,6 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
             pop!(logger.sticky_messages, id)
         end
     else
-        for _ in 1:logger.margin
-            println(logger.stream)
-        end
         write(logger.stream, msg)
     end
     
