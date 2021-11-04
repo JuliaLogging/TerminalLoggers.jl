@@ -397,7 +397,7 @@ end
         """
     end
 
-    if VERSION >= v"1.3.0"
+    @static if VERSION >= v"1.3.0"
         @testset "Parallel progress" begin
             buf = IOBuffer()
             io = IOContext(buf, :displaysize=>(30,75), :color=>false)
