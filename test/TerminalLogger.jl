@@ -1,5 +1,7 @@
 using TerminalLoggers: default_metafmt, format_message
 
+using ProgressLogging
+
 @noinline func1() = backtrace()
 
 function dummy_metafmt(level, _module, group, id, file, line)
@@ -192,8 +194,8 @@ end
     ┌ PREFIX msg
     │   exception =
     │    DivideError: integer division error
-    │    Stacktrace:
-    │     [1] func1() at""")
+    │    Stacktrace:""")
+    @test occursin("[1] func1", genmsg("msg", exception=(DivideError(),bt)))
 
     # Exception stacks
     if VERSION >= v"1.2"
@@ -211,11 +213,13 @@ end
     end
 
     @testset "Limiting large data structures" begin
-        @test genmsg("msg", a=fill(1.00001, 100,100), b=fill(2.00002, 10,10)) ==
+        a = fill(1.00001, 10,10)
+        b = fill(2.00002, 10,10)
+        @test genmsg("msg", a=a, b=b) ==
         replace("""
         ┌ PREFIX msg
         │   a =
-        │    100×100 Array{Float64,2}:
+        │    $(summary(a)):
         │     1.00001  1.00001  1.00001  1.00001  …  1.00001  1.00001  1.00001
         │     1.00001  1.00001  1.00001  1.00001     1.00001  1.00001  1.00001
         │     1.00001  1.00001  1.00001  1.00001     1.00001  1.00001  1.00001
@@ -223,7 +227,7 @@ end
         │     1.00001  1.00001  1.00001  1.00001     1.00001  1.00001  1.00001
         │     1.00001  1.00001  1.00001  1.00001     1.00001  1.00001  1.00001
         │   b =
-        │    10×10 Array{Float64,2}:
+        │    $(summary(b)):
         │     2.00002  2.00002  2.00002  2.00002  …  2.00002  2.00002  2.00002
         │     2.00002  2.00002  2.00002  2.00002     2.00002  2.00002  2.00002
         │     2.00002  2.00002  2.00002  2.00002     2.00002  2.00002  2.00002
@@ -237,11 +241,11 @@ end
         (VERSION < v"1.4-" ? "EOL" : "       EOL")=>""
         )
         # Limiting the amount which is printed
-        @test genmsg("msg", a=fill(1.00001, 10,10), show_limited=false) ==
+        @test genmsg("msg", a=a, show_limited=false) ==
         """
         ┌ PREFIX msg
         │   a =
-        │    10×10 Array{Float64,2}:
+        │    $(summary(a)):
         │     1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001
         │     1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001
         │     1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001  1.00001
@@ -300,9 +304,8 @@ end
 
         # For non-strings a blank line is added so that any formatting for
         # vertical alignment isn't broken
-        @test format_message([1 2; 3 4], 6, io_ctx) ==
+        @test format_message(Text(" 1  2\n 3  4"), 6, io_ctx) ==
             ["",
-             "2×2 Array{Int64,2}:",
              " 1  2",
              " 3  4"]
     end
@@ -392,5 +395,41 @@ end
         @test msgs[end] ⊏ r"""
         Outer 100%\|█+\| Time: .*
         """
+    end
+
+    if VERSION >= v"1.3.0"
+        @testset "Parallel progress" begin
+            buf = IOBuffer()
+            io = IOContext(buf, :displaysize=>(30,75), :color=>false)
+            logger = TerminalLogger(io, Debug)
+            # Crude multithreading test: generate some contention.
+            #
+            # Generate some contention in multi-threaded cases
+            ntasks = 8
+            @sync begin
+                with_logger(logger) do
+                    for i=1:ntasks
+                        Threads.@spawn for j=1:100
+                            @info "XXXX <$i,$j>" maxlog=100
+                            #sleep(0.001)
+                        end
+                    end
+                end
+            end
+            log_str = String(take!(buf))
+            @test length(findall("XXXX", log_str)) == 100
+
+            # Fun test of parallel progress logging to watch interactively:
+            #=
+            using ProgressLogging
+            @sync begin
+                for i=1:8
+                    Threads.@spawn @progress name="task $i" threshold=0.00005 for j=1:10000
+                        #sleep(0.001)
+                    end
+                end
+            end
+            =#
+        end
     end
 end
