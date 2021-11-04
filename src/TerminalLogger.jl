@@ -34,6 +34,7 @@ struct TerminalLogger <: AbstractLogger
     message_limits::Dict{Any,Int}
     sticky_messages::StickyMessages
     bartrees::Vector{Node{ProgressBar}}
+    lock::ReentrantLock
 end
 function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
                         meta_formatter=default_metafmt, show_limited=true,
@@ -49,11 +50,15 @@ function TerminalLogger(stream::IO=stderr, min_level=ProgressLevel;
         Dict{Any,Int}(),
         StickyMessages(stream),
         Union{}[],
+        ReentrantLock()
     )
 end
 
-shouldlog(logger::TerminalLogger, level, _module, group, id) =
-    get(logger.message_limits, id, 1) > 0
+function shouldlog(logger::TerminalLogger, level, _module, group, id)
+    lock(logger.lock) do
+        get(logger.message_limits, id, 1) > 0
+    end
+end
 
 min_enabled_level(logger::TerminalLogger) = logger.min_level
 
@@ -280,14 +285,19 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
                         filepath, line; maxlog=nothing,
                         sticky=nothing, kwargs...)
     if maxlog !== nothing && maxlog isa Integer
-        remaining = get!(logger.message_limits, id, maxlog)
-        logger.message_limits[id] = remaining - 1
+        remaining = 0
+        lock(logger.lock) do
+            remaining = get!(logger.message_limits, id, maxlog)
+            logger.message_limits[id] = remaining - 1
+        end
         remaining > 0 || return
     end
 
     progress = asprogress(level, message, _module, group, id, filepath, line; kwargs...)
     if progress !== nothing
-        handle_progress(logger, progress, kwargs)
+        lock(logger.lock) do
+            handle_progress(logger, progress, kwargs)
+        end
         return
     end
 
@@ -343,18 +353,21 @@ function handle_message(logger::TerminalLogger, level, message, _module, group, 
     end
 
     msg = take!(buf)
-    if sticky !== nothing
-        # Ensure we see the last message, even if it's :done
-        push!(logger.sticky_messages, id=>String(msg))
-        if sticky == :done
-            pop!(logger.sticky_messages, id)
+
+    lock(logger.lock) do
+        if sticky !== nothing
+            # Ensure we see the last message, even if it's :done
+            push!(logger.sticky_messages, id=>String(msg))
+            if sticky == :done
+                pop!(logger.sticky_messages, id)
+            end
+        else
+            write(logger.stream, msg)
         end
-    else
-        write(logger.stream, msg)
-    end
-    
-    if logger.always_flush
-        flush(logger.stream)
+        
+        if logger.always_flush
+            flush(logger.stream)
+        end
     end
 
     nothing

@@ -1,7 +1,7 @@
 name = "TerminalLoggers"
 uuid = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 authors = ["Chris Foster <chris42f@gmail.com>"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 LeftChildRightSiblingTrees = "1d6d02ad-be62-4b6b-8a6d-2f90e265016e"
