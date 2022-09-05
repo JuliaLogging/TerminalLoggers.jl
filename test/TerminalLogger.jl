@@ -205,7 +205,11 @@ end
             try
                 error("An exception")
             catch
-                Base.catch_stack()
+                if VERSION >= v"1.7.0-DEV.1106"
+                    current_exceptions()
+                else
+                    Base.catch_stack()
+                end
             end
         end
         @test occursin(r"An exception.*Stacktrace.*caused by.*Root cause.*Stacktrace"s,
