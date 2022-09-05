@@ -169,12 +169,6 @@ function showvalue(io, key, e::Tuple{Exception,Any})
 end
 showvalue(io, key, ex::Exception) = showerror(io, ex)
 
-if VERSION >= v"1.7.0-DEV.1106"
-    @eval begin
-        showvalue(io, key, ex::Base.ExceptionStack) = Base.show_exception_stack(io, ex)
-    end
-end
-
 # Generate a text representation of all key value pairs, split into lines with
 # per-line indentation as an integer.
 function format_key_value_pairs(kwargs, io_context)
