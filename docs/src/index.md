@@ -52,7 +52,7 @@ cleanly separated from the rest of the program output at the bottom of the
 terminal.
 
 For robust progress logging, `TerminalLoggers` recognizes the `Progress` type
-from the [`ProgressLogging` package](https://junolab.org/ProgressLogging.jl/stable/).
+from the [`ProgressLogging` package](https://github.com/JuliaLogging/ProgressLogging.jl).
 For easy to use progress reporting you can therefore use the `@progress` macro:
 
 ```julia
