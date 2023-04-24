@@ -304,7 +304,7 @@ end
         @test format_message("# Hi", 6, io_ctx) ==
             ["",
              "Hi",
-             "≡≡≡≡"]
+             VERSION < v"1.10-DEV" ? "≡≡≡≡" : "≡≡"]
 
         # For non-strings a blank line is added so that any formatting for
         # vertical alignment isn't broken

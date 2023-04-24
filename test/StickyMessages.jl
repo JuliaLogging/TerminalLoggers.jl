@@ -49,24 +49,17 @@ end
                                 "\e[19;1H\e[J\e[1;20r\e[18;1H"
 end
 
-@noinline func_barrier(f) = f()
-
 @testset "Sticky messages with ANSI codes" begin
     buf = IOBuffer()
     dsize = (20, 80) # Intentionally different from default of 25 rows
-    func_barrier() do
-        # Hide stickies variable behind a function barrier to make sure(er)
-        # that it can be GC'd.
-        stickies = StickyMessages(IOContext(buf, :displaysize=>dsize), ansi_codes=true)
-        push!(stickies, :a=>"a-msg\n")
-        push!(stickies, :b=>"b-msg\n")
-        take!(buf)
-        nothing
-    end
-    # Hack to force StickyMessages finalizer
-    GC.gc(true) # trigger finalizer
+    stickies = StickyMessages(IOContext(buf, :displaysize=>dsize), ansi_codes=true)
+    push!(stickies, :a=>"a-msg\n")
+    push!(stickies, :b=>"b-msg\n")
+    take!(buf)
+    finalize(stickies)
+    # Hack to allow StickyMessages async cleanup to run
     for i=1:1000
-        yield() # allow async cleanup
+        yield()
     end
     @test String(take!(buf)) == #clear       #csr    #pos
                                 "\e[19;1H\e[J\e[1;20r\e[18;1H"
