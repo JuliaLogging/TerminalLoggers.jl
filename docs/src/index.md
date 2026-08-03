@@ -82,5 +82,6 @@ correctly with exceptions.
 ## API Reference
 
 ```@docs
+TerminalLoggers
 TerminalLogger
 ```

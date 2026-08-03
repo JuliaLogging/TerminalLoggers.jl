@@ -195,7 +195,9 @@ end
     │   exception =
     │    DivideError: integer division error
     │    Stacktrace:""")
-    @test occursin("[1] func1", genmsg("msg", exception=(DivideError(),bt)))
+    # The frame index isn't fixed: on aarch64 the `backtrace()` frame itself is
+    # part of the trace, pushing `func1` down to [2].
+    @test occursin(r"\[\d+\] func1", genmsg("msg", exception=(DivideError(),bt)))
 
     # Exception stacks
     if VERSION >= v"1.2"

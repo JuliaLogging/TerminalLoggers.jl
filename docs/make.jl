@@ -6,12 +6,12 @@ makedocs(;
     pages=[
         "Home" => "index.md",
     ],
-    repo="https://github.com/c42f/TerminalLoggers.jl/blob/{commit}{path}#L{line}",
+    checkdocs=:exports,
     sitename="TerminalLoggers.jl",
     authors="Chris Foster <chris42f@gmail.com>"
 )
 
 deploydocs(;
-    repo="github.com/c42f/TerminalLoggers.jl",
+    repo="github.com/JuliaLogging/TerminalLoggers.jl",
     push_preview=true
 )
