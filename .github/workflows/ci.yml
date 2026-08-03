@@ -34,12 +34,8 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           coverage: true
-      # Only collect coverage from a single job: the `min` jobs run Julia 1.0,
-      # which is too old for the CoverageTools version processcoverage installs.
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest'
       - uses: codecov/codecov-action@v7
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest'
         with:
           files: lcov.info
           fail_ci_if_error: true
