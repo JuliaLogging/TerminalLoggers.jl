@@ -1,2 +1,10 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
+
+[sources]
+TerminalLoggers = { path = ".." }
+
+[compat]
+Documenter = "1"
+TerminalLoggers = "0.1"
