@@ -14,17 +14,23 @@ jobs:
       matrix:
         version:
           - 'min'
+          - '1.6'
           - 'lts'
           - '1'
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
+        # macOS-latest is aarch64, which Julia only supports from 1.7 onwards.
         exclude:
           - version: 'min'
             os: macOS-latest
+          - version: '1.6'
+            os: macOS-latest
         include:
           - version: 'min'
+            os: macOS-15-intel
+          - version: '1.6'
             os: macOS-15-intel
     steps:
       - uses: actions/checkout@v7
